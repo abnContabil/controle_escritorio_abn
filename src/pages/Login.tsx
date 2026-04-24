@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,8 +12,15 @@ export default function Login() {
   const [password, setPassword] = useState('Skip@Pass')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, user } = useAuth()
   const { toast } = useToast()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true })
+    }
+  }, [user, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,6 +28,8 @@ export default function Login() {
     const { error } = await signIn(email, password)
     if (error) {
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' })
+    } else {
+      navigate('/', { replace: true })
     }
     setIsLoading(false)
   }
