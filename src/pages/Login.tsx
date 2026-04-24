@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
-import { Building2 } from 'lucide-react'
+import { Building2, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('contato@abncontabil.com.br')
   const [password, setPassword] = useState('Skip@Pass')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { signIn } = useAuth()
   const { toast } = useToast()
@@ -49,15 +50,23 @@ export default function Login() {
                 className="h-11"
               />
             </div>
-            <div className="space-y-2">
+            <div className="relative">
               <Input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Sua senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-11"
+                className="h-11 pr-10"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
             <Button
               type="submit"

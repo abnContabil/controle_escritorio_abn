@@ -9,6 +9,160 @@ export type Database = {
   }
   public: {
     Tables: {
+      abn_companies: {
+        Row: {
+          cnpj: string
+          created_at: string
+          email: string | null
+          id: string
+          logo_url: string | null
+          razao_social: string
+          regime_tributario: string
+          status: string | null
+          uf: string | null
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          razao_social: string
+          regime_tributario: string
+          status?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          razao_social?: string
+          regime_tributario?: string
+          status?: string | null
+          uf?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      abn_obligations: {
+        Row: {
+          company_id: string
+          created_at: string
+          due_date: string
+          id: string
+          name: string
+          status: string | null
+          type: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          name: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          name?: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'abn_obligations_company_id_fkey'
+            columns: ['company_id']
+            isOneToOne: false
+            referencedRelation: 'abn_companies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      abn_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      abn_xml_control: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          month_year: string
+          status: string | null
+          type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          month_year: string
+          status?: string | null
+          type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          month_year?: string
+          status?: string | null
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'abn_xml_control_company_id_fkey'
+            columns: ['company_id']
+            isOneToOne: false
+            referencedRelation: 'abn_companies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       appointments: {
         Row: {
           created_at: string
@@ -777,6 +931,44 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: abn_companies
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   razao_social: text (not null)
+//   cnpj: text (not null)
+//   regime_tributario: text (not null)
+//   uf: text (nullable)
+//   email: text (nullable)
+//   whatsapp: text (nullable)
+//   status: text (nullable, default: 'Ativo'::text)
+//   logo_url: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: abn_obligations
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   name: text (not null)
+//   due_date: date (not null)
+//   status: text (nullable, default: 'Pendente'::text)
+//   type: text (nullable)
+//   updated_by: uuid (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: abn_profiles
+//   id: uuid (not null)
+//   name: text (nullable)
+//   email: text (nullable)
+//   role: text (nullable, default: 'Auxiliar'::text)
+//   created_at: timestamp with time zone (not null, default: now())
+// Table: abn_xml_control
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   month_year: text (not null)
+//   type: text (not null)
+//   status: text (nullable, default: 'Pendente'::text)
+//   updated_by: uuid (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: appointments
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -934,6 +1126,20 @@ export const Constants = {
 //   treatment_type: text (nullable)
 
 // --- CONSTRAINTS ---
+// Table: abn_companies
+//   PRIMARY KEY abn_companies_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY abn_companies_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: abn_obligations
+//   FOREIGN KEY abn_obligations_company_id_fkey: FOREIGN KEY (company_id) REFERENCES abn_companies(id) ON DELETE CASCADE
+//   PRIMARY KEY abn_obligations_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY abn_obligations_updated_by_fkey: FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL
+// Table: abn_profiles
+//   FOREIGN KEY abn_profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   PRIMARY KEY abn_profiles_pkey: PRIMARY KEY (id)
+// Table: abn_xml_control
+//   FOREIGN KEY abn_xml_control_company_id_fkey: FOREIGN KEY (company_id) REFERENCES abn_companies(id) ON DELETE CASCADE
+//   PRIMARY KEY abn_xml_control_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY abn_xml_control_updated_by_fkey: FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL
 // Table: appointments
 //   PRIMARY KEY appointments_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY appointments_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -996,6 +1202,22 @@ export const Constants = {
 //   FOREIGN KEY transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: abn_companies
+//   Policy "abn_companies_policy" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: abn_obligations
+//   Policy "abn_obligations_policy" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: abn_profiles
+//   Policy "abn_profiles_policy" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: abn_xml_control
+//   Policy "abn_xml_control_policy" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: appointments
 //   Policy "Users can manage their own appointments" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = user_id)
@@ -1064,6 +1286,20 @@ export const Constants = {
 //     WITH CHECK: (auth.uid() = user_id)
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION handle_abn_new_user()
+//   CREATE OR REPLACE FUNCTION public.handle_abn_new_user()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     INSERT INTO public.abn_profiles (id, email, name)
+//     VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)))
+//     ON CONFLICT (id) DO NOTHING;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
 // FUNCTION handle_new_user()
 //   CREATE OR REPLACE FUNCTION public.handle_new_user()
 //    RETURNS trigger
