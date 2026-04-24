@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Calculator, Download, PlayCircle, Save } from 'lucide-react'
+import { Download, PlayCircle, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { Progress } from '@/components/ui/progress'
-import { mockEmpresas } from '@/lib/mock-data'
+import { useAbnCompanies } from '@/hooks/use-abn-companies'
 
 export default function Apuracao() {
   const [empresa, setEmpresa] = useState('')
@@ -22,7 +22,8 @@ export default function Apuracao() {
   const [calculating, setCalculating] = useState(false)
   const { toast } = useToast()
 
-  const selectedEmpresaData = mockEmpresas.find((e) => e.id === empresa)
+  const { companies } = useAbnCompanies()
+  const selectedEmpresaData = companies.find((e) => e.id === empresa)
 
   const handleCalcular = () => {
     setCalculating(true)
@@ -54,9 +55,9 @@ export default function Apuracao() {
                   <SelectValue placeholder="Selecione a empresa" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockEmpresas.map((emp) => (
+                  {companies.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
-                      {emp.razaoSocial}
+                      {emp.razao_social}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -110,7 +111,7 @@ export default function Apuracao() {
         <div className="animate-slide-up space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              Regime: <span className="text-primary">{selectedEmpresaData.regime}</span>
+              Regime: <span className="text-primary">{selectedEmpresaData.regime_tributario}</span>
             </h2>
             <div className="flex gap-2">
               <Button variant="outline">
@@ -125,7 +126,7 @@ export default function Apuracao() {
           <Tabs defaultValue="resumo" className="w-full">
             <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto md:h-10">
               <TabsTrigger value="resumo">Resumo da Apuração</TabsTrigger>
-              {selectedEmpresaData.regime === 'Simples Nacional' ? (
+              {selectedEmpresaData.regime_tributario?.includes('Simples') ? (
                 <TabsTrigger value="simples">DAS (Simples)</TabsTrigger>
               ) : (
                 <>
@@ -190,7 +191,44 @@ export default function Apuracao() {
               </Card>
             </TabsContent>
 
-            {/* Other tabs would follow similar structure */}
+            <TabsContent value="federais" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Apuração de PIS/COFINS</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Detalhes da apuração federal disponíveis em breve.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="renda" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Apuração de IRPJ/CSLL</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Detalhes da apuração de renda disponíveis em breve.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="estaduais" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Apuração de ICMS/ISS</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Detalhes da apuração estadual e municipal disponíveis em breve.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       )}
