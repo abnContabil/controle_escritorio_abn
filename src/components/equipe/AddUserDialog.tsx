@@ -64,38 +64,33 @@ export function AddUserDialog({
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
     try {
-      const { error } = await supabase.rpc('abn_add_company_user', {
+      const { data, error } = await supabase.rpc('abn_add_company_user', {
         p_company_id: values.company_id,
         p_email: values.email,
         p_role: values.role,
       })
 
       if (error) {
-        console.error(error)
-        if (error.message.includes('Usuário ainda não existe')) {
-          toast({
-            title: 'Usuário não encontrado',
-            description:
-              'Usuário ainda não existe. Cadastre primeiro no Supabase Authentication ou implemente convite por e-mail.',
-            variant: 'destructive',
-          })
-        } else if (error.message.includes('já está vinculado')) {
-          toast({
-            title: 'Usuário já vinculado',
-            description: 'Este usuário já faz parte da equipe desta empresa.',
-            variant: 'destructive',
-          })
-        } else {
-          toast({
-            title: 'Erro ao adicionar',
-            description: 'Não foi possível adicionar o usuário. Verifique o console.',
-            variant: 'destructive',
-          })
-        }
+        console.error('Technical error adding user:', error)
+        toast({
+          title: 'Erro Técnico',
+          description: 'Ocorreu um erro ao comunicar com o servidor. Tente novamente.',
+          variant: 'destructive',
+        })
         return
       }
 
-      toast({ title: 'Sucesso', description: 'Usuário adicionado à equipe.' })
+      if (data && data.success === false) {
+        toast({
+          title: 'Aviso',
+          description: data.message,
+          variant: 'destructive',
+        })
+        return
+      }
+
+      toast({ title: 'Sucesso', description: 'Usuário adicionado à equipe com sucesso.' })
+      form.reset()
       onSuccess(values.company_id)
       onOpenChange(false)
     } finally {

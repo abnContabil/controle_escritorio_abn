@@ -21,7 +21,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Users as UsersIcon, ShieldAlert, Plus, Edit } from 'lucide-react'
-import { format } from 'date-fns'
 import { AddUserDialog } from '@/components/equipe/AddUserDialog'
 import { EditUserDialog } from '@/components/equipe/EditUserDialog'
 
@@ -210,11 +209,10 @@ export default function Equipe() {
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead>Nome / E-mail</TableHead>
-                      <TableHead>Empresa vinculada</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Empresa</TableHead>
                       <TableHead>Perfil</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Data de criação</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -222,8 +220,7 @@ export default function Equipe() {
                     {users.map((u) => (
                       <TableRow key={u.id} className="group hover:bg-slate-50/50 transition-colors">
                         <TableCell>
-                          <div className="font-medium text-slate-900">{u.name}</div>
-                          <div className="text-sm text-slate-500">{u.email}</div>
+                          <div className="font-medium text-slate-900">{u.email}</div>
                         </TableCell>
                         <TableCell className="text-slate-600">
                           {selectedCompany?.razao_social}
@@ -245,9 +242,6 @@ export default function Equipe() {
                           >
                             {u.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {format(new Date(u.created_at), 'dd/MM/yyyy')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button

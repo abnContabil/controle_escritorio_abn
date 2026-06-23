@@ -59,7 +59,7 @@ export function EditUserDialog({
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
     try {
-      const { error } = await supabase.rpc('abn_update_company_user', {
+      const { data, error } = await supabase.rpc('abn_update_company_user', {
         p_company_id: user.company_id,
         p_user_id: user.user_id,
         p_role: values.role,
@@ -67,10 +67,19 @@ export function EditUserDialog({
       })
 
       if (error) {
-        console.error(error)
+        console.error('Technical error updating user:', error)
         toast({
-          title: 'Erro ao atualizar',
-          description: 'Não foi possível atualizar o usuário. Verifique o console.',
+          title: 'Erro Técnico',
+          description: 'Ocorreu um erro de comunicação com o servidor. Tente novamente.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (data && data.success === false) {
+        toast({
+          title: 'Aviso',
+          description: data.message || 'Não foi possível atualizar o usuário.',
           variant: 'destructive',
         })
         return

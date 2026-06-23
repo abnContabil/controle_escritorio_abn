@@ -5172,7 +5172,7 @@ export type Database = {
     }
     Functions: {
       abn_add_company_user: {
-        Args: { p_company_id: string; p_email: string; p_role?: string }
+        Args: { p_company_id: string; p_email: string; p_role: string }
         Returns: Json
       }
       abn_can_access_company: {
@@ -5188,8 +5188,8 @@ export type Database = {
       abn_update_company_user: {
         Args: {
           p_company_id: string
-          p_role?: string
-          p_status?: string
+          p_role: string
+          p_status: string
           p_user_id: string
         }
         Returns: Json
