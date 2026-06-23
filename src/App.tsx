@@ -9,6 +9,7 @@ import Empresas from './pages/Empresas'
 import Obrigacoes from './pages/Obrigacoes'
 import Apuracao from './pages/Apuracao'
 import XmlHub from './pages/XmlHub'
+import Equipe from './pages/Equipe'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/obrigacoes" element={<Obrigacoes />} />
             <Route path="/apuracao" element={<Apuracao />} />
             <Route path="/xml" element={<XmlHub />} />
+            <Route path="/equipe" element={<Equipe />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

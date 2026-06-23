@@ -7,6 +7,7 @@ import {
   Files,
   Settings,
   Landmark,
+  Users,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -24,6 +25,7 @@ const navItems = [
   { title: 'Obrigações', url: '/obrigacoes', icon: FileText },
   { title: 'Apuração', url: '/apuracao', icon: Calculator },
   { title: 'XML Hub', url: '/xml', icon: Files },
+  { title: 'Equipe e Usuários', url: '/equipe', icon: Users },
 ]
 
 export function AppSidebar() {
