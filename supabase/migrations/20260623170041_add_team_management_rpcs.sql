@@ -1,3 +1,6 @@
+DROP FUNCTION IF EXISTS public.abn_add_company_user(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.abn_update_company_user(UUID, UUID, TEXT, TEXT);
+
 DO $$
 BEGIN
   -- Create the add user function
