@@ -1,34 +1,21 @@
-import { Calendar as CalendarIcon, CheckCircle2, Edit2, Trash2, AlertTriangle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useState } from 'react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
-
-const DEFAULT_COLUMNS = [
-  'A Fazer',
-  'Em Processamento',
-  'Aguardando Cliente',
-  'Pendente',
-  'Concluído',
-]
-
-const COLUMN_COLORS: Record<string, string> = {
-  'A Fazer': 'bg-slate-200 text-slate-700',
-  'Em Processamento': 'bg-blue-100 text-blue-700',
-  'Aguardando Cliente': 'bg-cyan-100 text-cyan-700',
-  Pendente: 'bg-amber-100 text-amber-700',
-  Concluído: 'bg-emerald-100 text-emerald-700',
-}
-
-function buildColumns(obligations: AbnObligationOperational[]) {
-  const set = new Set<string>(DEFAULT_COLUMNS)
-  obligations.forEach((o) => {
-    if (o.workflow_status) set.add(o.workflow_status)
-  })
-  return Array.from(set)
-}
+import { ObligationCard } from './ObligationCard'
+import { KANBAN_COLUMNS, COLUMN_COLORS } from './kanban-constants'
 
 export interface ObligationKanbanProps {
   obligations: AbnObligationOperational[]
@@ -36,8 +23,7 @@ export interface ObligationKanbanProps {
   error: string | null
   onRetry: () => void
   onEdit: (o: AbnObligationOperational) => void
-  onDelete: (id: string) => void
-  onComplete: (id: string) => void
+  onStatusChange: (id: string, status: string) => Promise<boolean>
 }
 
 export function ObligationKanban({
@@ -46,18 +32,52 @@ export function ObligationKanban({
   error,
   onRetry,
   onEdit,
-  onDelete,
-  onComplete,
+  onStatusChange,
 }: ObligationKanbanProps) {
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    id: string
+    status: string
+    message: string
+  } | null>(null)
+
+  const executeStatusChange = async (id: string, status: string) => {
+    setProcessingId(id)
+    await onStatusChange(id, status)
+    setProcessingId(null)
+  }
+
+  const handleStatusSelect = (id: string, status: string) => {
+    if (status === 'Concluído') {
+      setConfirmDialog({ id, status, message: 'Confirma a conclusão desta obrigação?' })
+      return
+    }
+    if (status === 'Cancelado') {
+      setConfirmDialog({ id, status, message: 'Confirma o cancelamento desta obrigação?' })
+      return
+    }
+    void executeStatusChange(id, status)
+  }
+
+  const handleConfirm = async () => {
+    if (!confirmDialog || processingId) return
+    const { id, status } = confirmDialog
+    await executeStatusChange(id, status)
+    setConfirmDialog(null)
+  }
+
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-slate-100/50 rounded-xl p-4 min-w-[280px]">
-            <Skeleton className="h-5 w-32 mb-4" />
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, j) => (
-                <Skeleton key={j} className="h-24 w-full rounded-lg" />
+      <div className="flex gap-3 overflow-x-auto pb-4">
+        {KANBAN_COLUMNS.map((col) => (
+          <div
+            key={col}
+            className="flex flex-col bg-muted/40 rounded-xl p-3 min-w-[260px] w-[260px]"
+          >
+            <Skeleton className="h-6 w-32 mb-3" />
+            <div className="space-y-2">
+              {Array.from({ length: 2 }).map((_, j) => (
+                <Skeleton key={j} className="h-28 w-full rounded-lg" />
               ))}
             </div>
           </div>
@@ -76,101 +96,71 @@ export function ObligationKanban({
     )
   }
 
-  const columns = buildColumns(obligations)
+  const showCanceled = obligations.some((o) => o.workflow_status === 'Cancelado')
+  const columns = showCanceled ? [...KANBAN_COLUMNS, 'Cancelado'] : [...KANBAN_COLUMNS]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto pb-4">
-      {columns.map((col) => {
-        const items = obligations.filter((o) => (o.workflow_status || 'A Fazer') === col)
-        return (
-          <div key={col} className="flex flex-col bg-slate-100/50 rounded-xl p-4 min-w-[280px]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm">{col}</h3>
-              <Badge
-                variant="secondary"
-                className={COLUMN_COLORS[col] || 'bg-slate-200 text-slate-700'}
-              >
-                {items.length}
-              </Badge>
-            </div>
-            <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-              {items.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">Sem itens</p>
-              )}
-              {items.map((task) => (
-                <Card
-                  key={task.id}
-                  className={cn(
-                    'shadow-sm border-border/50 hover:border-primary/30 transition-colors animate-slide-up group relative',
-                    task.is_overdue && 'border-destructive/50',
-                  )}
+    <>
+      <div className="flex gap-3 overflow-x-auto pb-4">
+        {columns.map((col) => {
+          const items = obligations.filter((o) => (o.workflow_status || 'A Fazer') === col)
+          return (
+            <div
+              key={col}
+              className="flex flex-col bg-muted/40 rounded-xl min-w-[260px] w-[260px] max-h-[calc(100vh-320px)]"
+            >
+              <div className="flex items-center justify-between p-3 border-b border-border/40 sticky top-0 bg-muted/40 rounded-t-xl z-10">
+                <h3 className="font-semibold text-sm">{col}</h3>
+                <Badge
+                  variant="secondary"
+                  className={cn('text-xs', COLUMN_COLORS[col] || 'bg-slate-200 text-slate-700')}
                 >
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <CardTitle className="text-sm font-medium leading-tight">
-                        {task.name}
-                      </CardTitle>
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
-                        {task.type}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {task.company_name || 'Sem empresa'}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="p-4 py-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <CalendarIcon className="h-3 w-3" />
-                        <span className={cn(task.is_overdue && 'text-destructive font-medium')}>
-                          {task.due_date
-                            ? new Date(task.due_date).toLocaleDateString('pt-BR', {
-                                timeZone: 'UTC',
-                              })
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/80 absolute right-2 bottom-12 p-1 rounded-md shadow-sm border">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => onEdit(task)}
-                        >
-                          <Edit2 className="h-3 w-3 text-slate-700" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive"
-                          onClick={() => {
-                            if (confirm('Tem certeza que deseja excluir esta obrigação?'))
-                              onDelete(task.id)
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                  {task.workflow_status !== 'Concluído' && (
-                    <CardFooter className="p-4 pt-2 flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs text-muted-foreground"
-                        onClick={() => onComplete(task.id)}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
-                      </Button>
-                    </CardFooter>
-                  )}
-                </Card>
-              ))}
+                  {items.length}
+                </Badge>
+              </div>
+              <div className="flex flex-col gap-2 overflow-y-auto p-3 flex-1">
+                {items.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    Nenhuma obrigação nesta etapa.
+                  </p>
+                )}
+                {items.map((task) => (
+                  <ObligationCard
+                    key={task.id}
+                    obligation={task}
+                    processing={processingId === task.id}
+                    onEdit={onEdit}
+                    onStatusSelect={handleStatusSelect}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      })}
-    </div>
+          )
+        })}
+      </div>
+
+      <AlertDialog
+        open={confirmDialog !== null}
+        onOpenChange={(open) => {
+          if (!open && processingId === null) {
+            setConfirmDialog(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmação</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDialog?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={processingId !== null}>Cancelar</AlertDialogCancel>
+            <Button onClick={() => void handleConfirm()} disabled={processingId !== null}>
+              {processingId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Confirmar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

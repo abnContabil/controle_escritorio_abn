@@ -57,6 +57,7 @@ export function useAbnObligations() {
   const [loading, setLoading] = useState(true)
   const [indicatorsLoading, setIndicatorsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [updating, setUpdating] = useState(false)
   const { toast } = useToast()
 
   const fetchObligations = useCallback(async () => {
@@ -151,14 +152,38 @@ export function useAbnObligations() {
     return true
   }
 
+  const updateStatus = async (id: string, status: string) => {
+    setUpdating(true)
+    const { error: err } = await supabase.rpc('abn_set_obligation_status', {
+      p_obligation_id: id,
+      p_status: status,
+    })
+    if (err) {
+      console.error('Erro ao alterar status da obrigação:', err)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível alterar o status. Tente novamente.',
+        variant: 'destructive',
+      })
+      setUpdating(false)
+      return false
+    }
+    toast({ title: 'Sucesso', description: 'Status alterado com sucesso' })
+    setUpdating(false)
+    refetch()
+    return true
+  }
+
   return {
     obligations,
     indicators,
     loading,
     indicatorsLoading,
     error,
+    updating,
     saveObligation,
     deleteObligation,
+    updateStatus,
     refetch,
   }
 }

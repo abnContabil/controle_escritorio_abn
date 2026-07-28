@@ -28,6 +28,7 @@ import { useAbnCompanies } from '@/hooks/use-abn-companies'
 import { IndicatorCards } from '@/components/obrigacoes/IndicatorCards'
 import { FilterBar } from '@/components/obrigacoes/FilterBar'
 import { ObligationKanban } from '@/components/obrigacoes/ObligationKanban'
+import { KANBAN_COLUMNS } from '@/components/obrigacoes/kanban-constants'
 
 function competenciaToMMYYYY(dateStr: string | null): string {
   if (!dateStr) return ''
@@ -66,7 +67,7 @@ export default function Obrigacoes() {
     indicatorsLoading,
     error,
     saveObligation,
-    deleteObligation,
+    updateStatus,
     refetch,
   } = useAbnObligations()
   const { companies } = useAbnCompanies()
@@ -89,15 +90,16 @@ export default function Obrigacoes() {
   }, [obligations])
 
   const workflowStatuses = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>([...KANBAN_COLUMNS, 'Cancelado'])
     obligations.forEach((o) => {
       if (o.workflow_status) set.add(o.workflow_status)
     })
-    return Array.from(set).sort()
+    return Array.from(set)
   }, [obligations])
 
   const filtered = useMemo(() => {
     return obligations.filter((o) => {
+      if (o.workflow_status === 'Cancelado' && filterStatus !== 'Cancelado') return false
       if (filterCompetencia) {
         if (competenciaToMMYYYY(o.competencia) !== filterCompetencia) return false
       }
@@ -148,8 +150,8 @@ export default function Obrigacoes() {
     setActiveIndicator(null)
   }
 
-  const handleComplete = async (id: string) => {
-    await saveObligation({ id, status: 'Concluído' })
+  const handleStatusChange = async (id: string, status: string) => {
+    return await updateStatus(id, status)
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -244,8 +246,7 @@ export default function Obrigacoes() {
             error={error}
             onRetry={refetch}
             onEdit={openEdit}
-            onDelete={deleteObligation}
-            onComplete={handleComplete}
+            onStatusChange={handleStatusChange}
           />
         </TabsContent>
         <TabsContent value="lista" className="mt-4">
@@ -327,9 +328,10 @@ export default function Obrigacoes() {
                 <SelectContent>
                   <SelectItem value="A Fazer">A Fazer</SelectItem>
                   <SelectItem value="Em Processamento">Em Processamento</SelectItem>
-                  <SelectItem value="Pendente">Pendente Pagamento</SelectItem>
-                  <SelectItem value="Concluído">Concluído</SelectItem>
-                  <SelectItem value="Atrasado">Atrasado</SelectItem>
+                  <SelectItem value="Em Conferência">Em Conferência</SelectItem>
+                  <SelectItem value="Aguardando Cliente">Aguardando Cliente</SelectItem>
+                  <SelectItem value="Pendente Pagamento">Pendente Pagamento</SelectItem>
+                  <SelectItem value="Concluído">Concluído</SelectItem>{' '}
                 </SelectContent>
               </Select>
             </div>
