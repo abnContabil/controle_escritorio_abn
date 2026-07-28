@@ -16018,6 +16018,10 @@ export type Database = {
         }
         Returns: Json
       }
+      abn_user_can_access_company: {
+        Args: { p_company_id: string; p_user_id: string }
+        Returns: boolean
+      }
       abn_user_can_manage_company: {
         Args: { p_company_id: string; p_user_id: string }
         Returns: boolean

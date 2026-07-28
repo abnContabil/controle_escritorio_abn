@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Search, User, LogOut, Loader2 } from 'lucide-react'
+import { Bell, Search, LogOut, Loader2 } from 'lucide-react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 
@@ -33,11 +32,6 @@ export function AppHeader() {
       const { error } = await signOut()
       if (error) throw error
 
-      // Clear all local storage and session storage
-      localStorage.clear()
-      sessionStorage.clear()
-
-      // Redirect to login replacing history to prevent back button
       navigate('/login', { replace: true })
     } catch (error) {
       console.error('Logout error:', error)
@@ -75,9 +69,6 @@ export function AppHeader() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-[10px]">
-            3
-          </Badge>
           <span className="sr-only">Notificações</span>
         </Button>
 

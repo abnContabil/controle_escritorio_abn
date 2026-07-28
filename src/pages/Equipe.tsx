@@ -39,10 +39,14 @@ export default function Equipe() {
   useEffect(() => {
     const checkRoles = async () => {
       if (!user) return
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('abn_company_users')
         .select('company_id, role')
         .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Erro ao verificar permissões:', error)
+      }
 
       const rolesMap: Record<string, string> = {}
       data?.forEach((r) => {
@@ -86,18 +90,29 @@ export default function Equipe() {
 
   const fetchUsers = async (companyId: string) => {
     setLoading(true)
-    const { data: companyUsers } = await supabase
+    const { data: companyUsers, error: usersError } = await supabase
       .from('abn_company_users')
       .select('*')
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
 
+    if (usersError) {
+      console.error('Erro ao buscar usuários da empresa:', usersError)
+      setUsers([])
+      setLoading(false)
+      return
+    }
+
     if (companyUsers && companyUsers.length > 0) {
       const userIds = companyUsers.map((u) => u.user_id)
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('abn_profiles')
         .select('id, name, email')
         .in('id', userIds)
+
+      if (profilesError) {
+        console.error('Erro ao buscar perfis:', profilesError)
+      }
 
       const merged = companyUsers.map((cu) => {
         const profile = profiles?.find((p) => p.id === cu.user_id)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Building2 } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, FileEdit, PowerOff, Power, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +33,7 @@ export default function Empresas() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedEmpresa, setSelectedEmpresa] = useState<AbnCompany | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const { companies, loading, saveCompany, deleteCompany } = useAbnCompanies()
+  const { companies, loading, saveCompany, toggleCompanyStatus } = useAbnCompanies()
 
   const filteredEmpresas = companies.filter(
     (emp) =>
@@ -181,19 +181,21 @@ export default function Empresas() {
                             >
                               <FileEdit className="mr-2 h-4 w-4" /> Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive cursor-pointer"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    'Tem certeza que deseja inativar/excluir esta empresa?',
-                                  )
-                                )
-                                  deleteCompany(empresa.id)
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                            </DropdownMenuItem>
+                            {(empresa.active ?? empresa.status === 'Ativo') ? (
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() => toggleCompanyStatus(empresa)}
+                              >
+                                <PowerOff className="mr-2 h-4 w-4" /> Inativar empresa
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() => toggleCompanyStatus(empresa)}
+                              >
+                                <Power className="mr-2 h-4 w-4" /> Reativar empresa
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

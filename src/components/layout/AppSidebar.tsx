@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Building2,
   LayoutDashboard,
@@ -8,6 +9,8 @@ import {
   Settings,
   Landmark,
   Users,
+  LogOut,
+  Loader2,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -18,6 +21,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
 
 const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -30,6 +35,27 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
+  const { toast } = useToast()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
+    const { error } = await signOut()
+    if (error) {
+      console.error('Erro ao sair da conta:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sair da conta',
+        description: 'Não foi possível sair. Tente novamente.',
+      })
+      setIsLoggingOut(false)
+    } else {
+      navigate('/login', { replace: true })
+    }
+  }
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -65,6 +91,16 @@ export function AppSidebar() {
                 <Settings />
                 <span>Configurações</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Sair da conta"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+              <span>{isLoggingOut ? 'Saindo...' : 'Sair da conta'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
