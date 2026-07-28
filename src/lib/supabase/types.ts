@@ -1018,14 +1018,125 @@ export type Database = {
           },
         ]
       }
+      abn_obligation_checklist: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          obligation_id: string
+          position: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          obligation_id: string
+          position?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          obligation_id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'abn_obligation_checklist_obligation_id_fkey'
+            columns: ['obligation_id']
+            isOneToOne: false
+            referencedRelation: 'abn_obligations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'abn_obligation_checklist_obligation_id_fkey'
+            columns: ['obligation_id']
+            isOneToOne: false
+            referencedRelation: 'vw_abn_obligations_operational'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      abn_obligation_history: {
+        Row: {
+          action: string
+          changed_by: string | null
+          created_at: string
+          details: Json
+          id: string
+          new_status: string | null
+          obligation_id: string
+          old_status: string | null
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          new_status?: string | null
+          obligation_id: string
+          old_status?: string | null
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          new_status?: string | null
+          obligation_id?: string
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'abn_obligation_history_obligation_id_fkey'
+            columns: ['obligation_id']
+            isOneToOne: false
+            referencedRelation: 'abn_obligations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'abn_obligation_history_obligation_id_fkey'
+            columns: ['obligation_id']
+            isOneToOne: false
+            referencedRelation: 'vw_abn_obligations_operational'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       abn_obligations: {
         Row: {
           company_id: string
+          competencia: string
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           due_date: string
+          guide_status: string
           id: string
+          kanban_position: number
           name: string
+          notes: string | null
+          priority: string
+          progress_percentage: number
           project_id2: string | null
+          responsible_user_id: string | null
           status: string | null
           type: string | null
           updated_at: string
@@ -1033,11 +1144,20 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          competencia: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           due_date: string
+          guide_status?: string
           id?: string
+          kanban_position?: number
           name: string
+          notes?: string | null
+          priority?: string
+          progress_percentage?: number
           project_id2?: string | null
+          responsible_user_id?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string
@@ -1045,11 +1165,20 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          competencia?: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           due_date?: string
+          guide_status?: string
           id?: string
+          kanban_position?: number
           name?: string
+          notes?: string | null
+          priority?: string
+          progress_percentage?: number
           project_id2?: string | null
+          responsible_user_id?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string
@@ -14870,6 +14999,69 @@ export type Database = {
           },
         ]
       }
+      vw_abn_obligations_indicators: {
+        Row: {
+          aguardando_cliente: number | null
+          atrasadas: number | null
+          concluidas_no_mes: number | null
+          proximos_7_dias: number | null
+          total_competencia_atual: number | null
+          vencem_hoje: number | null
+        }
+        Relationships: []
+      }
+      vw_abn_obligations_operational: {
+        Row: {
+          calculated_progress_percentage: number | null
+          checklist_completed: number | null
+          checklist_total: number | null
+          company_active: boolean | null
+          company_id: string | null
+          company_name: string | null
+          competencia: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          days_to_due: number | null
+          due_date: string | null
+          guide_status: string | null
+          id: string | null
+          is_overdue: boolean | null
+          kanban_position: number | null
+          name: string | null
+          notes: string | null
+          priority: string | null
+          progress_percentage: number | null
+          project_id2: string | null
+          regime_tributario: string | null
+          responsible_email: string | null
+          responsible_name: string | null
+          responsible_user_id: string | null
+          status: string | null
+          type: string | null
+          uf: string | null
+          updated_at: string | null
+          updated_by: string | null
+          urgency: string | null
+          workflow_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'abn_obligations_company_id_fkey'
+            columns: ['company_id']
+            isOneToOne: false
+            referencedRelation: 'abn_companies'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'abn_obligations_company_id_fkey'
+            columns: ['company_id']
+            isOneToOne: false
+            referencedRelation: 'vw_abn_companies_safe'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       vw_extrato_inteligente: {
         Row: {
           categoria: string | null
@@ -14978,13 +15170,6 @@ export type Database = {
           },
           {
             foreignKeyName: 'abn_ofx_imports_company_id_fkey'
-            columns: ['empresa_id']
-            isOneToOne: false
-            referencedRelation: 'abn_companies'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'abn_ofx_imports_company_id_fkey'
             columns: ['company_id']
             isOneToOne: false
             referencedRelation: 'abn_companies'
@@ -14993,13 +15178,20 @@ export type Database = {
           {
             foreignKeyName: 'abn_ofx_imports_company_id_fkey'
             columns: ['empresa_id']
+            isOneToOne: false
+            referencedRelation: 'abn_companies'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'abn_ofx_imports_company_id_fkey'
+            columns: ['company_id']
             isOneToOne: false
             referencedRelation: 'vw_abn_companies_safe'
             referencedColumns: ['id']
           },
           {
             foreignKeyName: 'abn_ofx_imports_company_id_fkey'
-            columns: ['company_id']
+            columns: ['empresa_id']
             isOneToOne: false
             referencedRelation: 'vw_abn_companies_safe'
             referencedColumns: ['id']
@@ -15922,6 +16114,10 @@ export type Database = {
           p_company_id: string
           p_primary_code: string
         }
+        Returns: Json
+      }
+      abn_set_obligation_status: {
+        Args: { p_obligation_id: string; p_status: string }
         Returns: Json
       }
       abn_sugerir_conciliacao_bancaria: {

@@ -2,44 +2,107 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
-export type AbnObligation = {
+export type AbnObligationOperational = {
   id: string
   company_id: string
   name: string
-  due_date: string
-  status: string
   type: string
+  status: string
+  workflow_status: string
+  due_date: string
+  competencia: string
+  responsible_user_id: string | null
+  responsible_name: string | null
+  priority: string | null
+  guide_status: string | null
+  progress_percentage: number
+  kanban_position: number
+  company_name: string
+  regime_tributario: string | null
+  uf: string | null
+  days_to_due: number | null
+  is_overdue: boolean
+  urgency: string | null
+  checklist_total: number | null
+  checklist_completed: number | null
+  calculated_progress_percentage: number | null
 }
 
+export type AbnObligation = AbnObligationOperational
+
+export type AbnObligationsIndicators = {
+  atrasadas: number
+  vencem_hoje: number
+  proximos_7_dias: number
+  aguardando_cliente: number
+  concluidas_no_mes: number
+  total_competencia_atual: number
+}
+
+export type AbnObligationInput = {
+  id?: string
+  company_id?: string
+  name?: string
+  due_date?: string
+  status?: string
+  type?: string
+}
+
+const OBLIGATION_FIELDS =
+  'id, company_id, name, type, status, workflow_status, due_date, competencia, responsible_user_id, responsible_name, priority, guide_status, progress_percentage, kanban_position, company_name, regime_tributario, uf, days_to_due, is_overdue, urgency, checklist_total, checklist_completed, calculated_progress_percentage'
+
 export function useAbnObligations() {
-  const [obligations, setObligations] = useState<AbnObligation[]>([])
+  const [obligations, setObligations] = useState<AbnObligationOperational[]>([])
+  const [indicators, setIndicators] = useState<AbnObligationsIndicators | null>(null)
   const [loading, setLoading] = useState(true)
+  const [indicatorsLoading, setIndicatorsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchObligations = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('abn_obligations')
-      .select('*')
-      .order('due_date', { ascending: true })
+    setError(null)
+    const { data, error: err } = await supabase
+      .from('vw_abn_obligations_operational')
+      .select(OBLIGATION_FIELDS)
+      .order('kanban_position', { ascending: true })
 
-    if (error) {
-      toast({
-        title: 'Erro ao buscar obrigações',
-        description: error.message,
-        variant: 'destructive',
-      })
+    if (err) {
+      console.error('Erro ao buscar obrigações:', err)
+      setError('Não foi possível carregar as obrigações. Tente novamente.')
+      setObligations([])
     } else {
-      setObligations((data as any) || [])
+      setObligations((data as AbnObligationOperational[]) || [])
     }
     setLoading(false)
-  }, [toast])
+  }, [])
+
+  const fetchIndicators = useCallback(async () => {
+    setIndicatorsLoading(true)
+    const { data, error: err } = await supabase
+      .from('vw_abn_obligations_indicators')
+      .select('*')
+      .limit(1)
+
+    if (err) {
+      console.error('Erro ao buscar indicadores:', err)
+      setIndicators(null)
+    } else {
+      setIndicators((data as AbnObligationsIndicators[])?.[0] || null)
+    }
+    setIndicatorsLoading(false)
+  }, [])
+
+  const refetch = useCallback(() => {
+    fetchObligations()
+    fetchIndicators()
+  }, [fetchObligations, fetchIndicators])
 
   useEffect(() => {
-    fetchObligations()
-  }, [fetchObligations])
+    refetch()
+  }, [refetch])
 
-  const saveObligation = async (obligation: Partial<AbnObligation>) => {
+  const saveObligation = async (obligation: AbnObligationInput) => {
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData.user?.id
 
@@ -48,45 +111,54 @@ export function useAbnObligations() {
       return false
     }
 
-    const { ...dataToSave } = obligation
+    const { id, ...dataToSave } = obligation
 
-    if (dataToSave.id) {
-      const { error } = await supabase
+    if (id) {
+      const { error: err } = await supabase
         .from('abn_obligations')
         .update({ ...dataToSave, updated_at: new Date().toISOString(), updated_by: userId })
-        .eq('id', dataToSave.id)
+        .eq('id', id)
 
-      if (error) {
-        toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' })
+      if (err) {
+        toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' })
         return false
       }
       toast({ title: 'Sucesso', description: 'Obrigação atualizada com sucesso' })
     } else {
-      const { error } = await supabase
+      const { error: err } = await supabase
         .from('abn_obligations')
         .insert([{ ...dataToSave, updated_by: userId }])
 
-      if (error) {
-        toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' })
+      if (err) {
+        toast({ title: 'Erro ao cadastrar', description: err.message, variant: 'destructive' })
         return false
       }
       toast({ title: 'Sucesso', description: 'Obrigação cadastrada com sucesso' })
     }
 
-    fetchObligations()
+    refetch()
     return true
   }
 
   const deleteObligation = async (id: string) => {
-    const { error } = await supabase.from('abn_obligations').delete().eq('id', id)
-    if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    const { error: err } = await supabase.from('abn_obligations').delete().eq('id', id)
+    if (err) {
+      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
       return false
     }
     toast({ title: 'Sucesso', description: 'Obrigação excluída com sucesso' })
-    fetchObligations()
+    refetch()
     return true
   }
 
-  return { obligations, loading, saveObligation, deleteObligation, refetch: fetchObligations }
+  return {
+    obligations,
+    indicators,
+    loading,
+    indicatorsLoading,
+    error,
+    saveObligation,
+    deleteObligation,
+    refetch,
+  }
 }
