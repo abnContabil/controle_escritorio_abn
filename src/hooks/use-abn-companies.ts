@@ -21,7 +21,7 @@ export function useAbnCompanies() {
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('abn_companies')
+      .from('vw_abn_companies_safe')
       .select('*')
       .order('created_at', { ascending: false })
 
