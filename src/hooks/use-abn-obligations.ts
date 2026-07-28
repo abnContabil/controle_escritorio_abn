@@ -9,10 +9,6 @@ export type AbnObligation = {
   due_date: string
   status: string
   type: string
-  abn_companies?: {
-    razao_social: string
-    regime_tributario: string
-  }
 }
 
 export function useAbnObligations() {
@@ -24,7 +20,7 @@ export function useAbnObligations() {
     setLoading(true)
     const { data, error } = await supabase
       .from('abn_obligations')
-      .select('*, abn_companies(razao_social, regime_tributario)')
+      .select('*')
       .order('due_date', { ascending: true })
 
     if (error) {
@@ -52,7 +48,7 @@ export function useAbnObligations() {
       return false
     }
 
-    const { abn_companies, ...dataToSave } = obligation
+    const { ...dataToSave } = obligation
 
     if (dataToSave.id) {
       const { error } = await supabase

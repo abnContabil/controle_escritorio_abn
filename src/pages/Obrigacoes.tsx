@@ -32,6 +32,17 @@ export default function Obrigacoes() {
   const { obligations, saveObligation, deleteObligation } = useAbnObligations()
   const { companies } = useAbnCompanies()
 
+  const companyMap = useMemo(() => {
+    const map = new Map<string, { razao_social: string; regime_tributario: string }>()
+    companies.forEach((c) => {
+      map.set(c.id, {
+        razao_social: c.razao_social,
+        regime_tributario: c.regime_tributario,
+      })
+    })
+    return map
+  }, [companies])
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingObligation, setEditingObligation] = useState<Partial<AbnObligation> | null>(null)
 
@@ -45,13 +56,13 @@ export default function Obrigacoes() {
   const filteredObligations = useMemo(() => {
     return obligations.filter((o) => {
       if (filterRegime === 'todos') return true
-      const regime = o.abn_companies?.regime_tributario?.toLowerCase() || ''
+      const regime = companyMap.get(o.company_id)?.regime_tributario?.toLowerCase() || ''
       if (filterRegime === 'simples' && regime.includes('simples')) return true
       if (filterRegime === 'presumido' && regime.includes('presumido')) return true
       if (filterRegime === 'real' && regime.includes('real')) return true
       return false
     })
-  }, [obligations, filterRegime])
+  }, [obligations, filterRegime, companyMap])
 
   const handleComplete = async (id: string) => {
     await saveObligation({ id, status: 'Concluído' })
@@ -166,7 +177,8 @@ export default function Obrigacoes() {
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground truncate">
-                            {task.abn_companies?.razao_social || 'Sem empresa vinculada'}
+                            {companyMap.get(task.company_id)?.razao_social ||
+                              'Sem empresa vinculada'}
                           </p>
                         </CardHeader>
                         <CardContent className="p-4 py-2">
