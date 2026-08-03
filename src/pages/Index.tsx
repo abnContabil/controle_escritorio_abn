@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, CheckCircle2, Building2, TrendingUp, Clock } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Building2, TrendingUp, Clock, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   PieChart,
   Pie,
@@ -24,7 +26,12 @@ import { useAbnDashboardKpis } from '@/hooks/use-abn-dashboard-kpis'
 export default function Index() {
   const { companies } = useAbnCompanies()
   const { obligations } = useAbnObligations()
-  const { kpis } = useAbnDashboardKpis()
+  const {
+    kpis,
+    loading: kpisLoading,
+    error: kpisError,
+    refetch: refetchKpis,
+  } = useAbnDashboardKpis()
 
   const empresasAtivas = kpis?.empresas_ativas ?? companies.length
   const obrigacoesPendentes = kpis?.obrigacoes_pendentes ?? 0
@@ -79,47 +86,82 @@ export default function Index() {
         </p>
       </div>
 
+      {kpisError && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-destructive">Erro ao carregar indicadores</p>
+              <p className="text-xs text-muted-foreground">
+                Não foi possível buscar os KPIs do dashboard.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={refetchKpis} disabled={kpisLoading}>
+            <RefreshCw className={cn('h-4 w-4 mr-2', kpisLoading && 'animate-spin')} />
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Empresas Ativas</CardTitle>
-            <Building2 className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{empresasAtivas}</div>
-            <p className="text-xs text-muted-foreground">Cadastradas na base</p>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-destructive">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Obrigações Pendentes</CardTitle>
-            <AlertCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{obrigacoesPendentes}</div>
-            <p className="text-xs text-muted-foreground">Aguardando processamento</p>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Impostos a Apurar</CardTitle>
-            <TrendingUp className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{impostosApurar}</div>
-            <p className="text-xs text-muted-foreground">Competência atual</p>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-secondary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taxaEntrega}%</div>
-            <p className="text-xs text-muted-foreground">Progresso geral</p>
-          </CardContent>
-        </Card>
+        {kpisLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card className="border-l-4 border-l-primary">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Empresas Ativas</CardTitle>
+                <Building2 className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{empresasAtivas}</div>
+                <p className="text-xs text-muted-foreground">Cadastradas na base</p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-destructive">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Obrigações Pendentes</CardTitle>
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{obrigacoesPendentes}</div>
+                <p className="text-xs text-muted-foreground">Aguardando processamento</p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Impostos a Apurar</CardTitle>
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{impostosApurar}</div>
+                <p className="text-xs text-muted-foreground">Competência atual</p>
+              </CardContent>
+            </Card>
+            <Card className="border-l-4 border-l-secondary">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-secondary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{taxaEntrega}%</div>
+                <p className="text-xs text-muted-foreground">Progresso geral</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

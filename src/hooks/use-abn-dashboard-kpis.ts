@@ -1,21 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
-import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
+import { supabase } from '@/lib/supabase/client'
 import type { ContabilIoDashboardKpis } from '@/lib/supabase/contabil-io-types'
 
 export function useAbnDashboardKpis() {
   const [kpis, setKpis] = useState<ContabilIoDashboardKpis | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchKpis = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await contabilIoDb
+    setError(null)
+
+    const { data, error: queryError } = await supabase
       .from('vw_abn_dashboard_kpis')
       .select('*')
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      console.error('Erro ao buscar KPIs do dashboard:', error)
+    if (queryError) {
+      console.error('Erro ao buscar KPIs do dashboard:', queryError)
+      setError(queryError.message)
+      setKpis(null)
+    } else if (!data) {
       setKpis(null)
     } else {
       setKpis(data as ContabilIoDashboardKpis)
@@ -27,5 +33,5 @@ export function useAbnDashboardKpis() {
     fetchKpis()
   }, [fetchKpis])
 
-  return { kpis, loading, refetch: fetchKpis }
+  return { kpis, loading, error, refetch: fetchKpis }
 }
