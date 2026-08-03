@@ -13,11 +13,13 @@ export type AbnObligationOperational = {
   competencia: string
   responsible_user_id: string | null
   responsible_name: string | null
+  responsible_email: string | null
   priority: string | null
   guide_status: string | null
   progress_percentage: number
   kanban_position: number
   company_name: string
+  company_active: boolean
   regime_tributario: string | null
   uf: string | null
   days_to_due: number | null
@@ -26,6 +28,11 @@ export type AbnObligationOperational = {
   checklist_total: number | null
   checklist_completed: number | null
   calculated_progress_percentage: number | null
+  completed_at: string | null
+  completed_by: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type AbnObligation = AbnObligationOperational
@@ -46,16 +53,21 @@ export type AbnObligationInput = {
   due_date?: string
   status?: string
   type?: string
+  competencia?: string
+  responsible_user_id?: string | null
+  priority?: string
+  guide_status?: string
+  notes?: string
+  progress_percentage?: number
+  kanban_position?: number
 }
 
 const OBLIGATION_FIELDS =
-  'id, company_id, name, type, status, workflow_status, due_date, competencia, responsible_user_id, responsible_name, priority, guide_status, progress_percentage, kanban_position, company_name, regime_tributario, uf, days_to_due, is_overdue, urgency, checklist_total, checklist_completed, calculated_progress_percentage'
+  'id, company_id, name, type, status, workflow_status, due_date, competencia, responsible_user_id, responsible_name, responsible_email, priority, guide_status, progress_percentage, kanban_position, company_name, company_active, regime_tributario, uf, days_to_due, is_overdue, urgency, checklist_total, checklist_completed, calculated_progress_percentage, completed_at, completed_by, notes, created_at, updated_at'
 
 export function useAbnObligations() {
   const [obligations, setObligations] = useState<AbnObligationOperational[]>([])
-  const [indicators, setIndicators] = useState<AbnObligationsIndicators | null>(null)
   const [loading, setLoading] = useState(true)
-  const [indicatorsLoading, setIndicatorsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
   const { toast } = useToast()
@@ -78,26 +90,9 @@ export function useAbnObligations() {
     setLoading(false)
   }, [])
 
-  const fetchIndicators = useCallback(async () => {
-    setIndicatorsLoading(true)
-    const { data, error: err } = await supabase
-      .from('vw_abn_obligations_indicators')
-      .select('*')
-      .limit(1)
-
-    if (err) {
-      console.error('Erro ao buscar indicadores:', err)
-      setIndicators(null)
-    } else {
-      setIndicators((data as AbnObligationsIndicators[])?.[0] || null)
-    }
-    setIndicatorsLoading(false)
-  }, [])
-
   const refetch = useCallback(() => {
     fetchObligations()
-    fetchIndicators()
-  }, [fetchObligations, fetchIndicators])
+  }, [fetchObligations])
 
   useEffect(() => {
     refetch()
@@ -112,7 +107,21 @@ export function useAbnObligations() {
       return false
     }
 
-    const { id, ...dataToSave } = obligation
+    const { id, ...rawData } = obligation
+
+    const dataToSave: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(rawData)) {
+      if (value !== undefined) {
+        dataToSave[key] = value
+      }
+    }
+
+    if (
+      typeof dataToSave.competencia === 'string' &&
+      /^\d{4}-\d{2}$/.test(dataToSave.competencia)
+    ) {
+      dataToSave.competencia = `${dataToSave.competencia}-01`
+    }
 
     if (id) {
       const { error: err } = await supabase
@@ -154,7 +163,7 @@ export function useAbnObligations() {
 
   const updateStatus = async (id: string, status: string) => {
     setUpdating(true)
-    const { error: err } = await supabase.rpc('abn_set_obligation_status', {
+    const { data, error: err } = await supabase.rpc('abn_set_obligation_status', {
       p_obligation_id: id,
       p_status: status,
     })
@@ -168,6 +177,17 @@ export function useAbnObligations() {
       setUpdating(false)
       return false
     }
+    if (
+      data &&
+      typeof data === 'object' &&
+      'success' in data &&
+      (data as { success: boolean }).success === false
+    ) {
+      const msg = (data as { message?: string }).message || 'Não foi possível alterar o status.'
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+      setUpdating(false)
+      return false
+    }
     toast({ title: 'Sucesso', description: 'Status alterado com sucesso' })
     setUpdating(false)
     refetch()
@@ -176,9 +196,7 @@ export function useAbnObligations() {
 
   return {
     obligations,
-    indicators,
     loading,
-    indicatorsLoading,
     error,
     updating,
     saveObligation,

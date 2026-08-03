@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
 import { ObligationCard } from './ObligationCard'
-import { KANBAN_COLUMNS, COLUMN_COLORS } from './kanban-constants'
+import { KANBAN_COLUMNS, COLUMN_COLORS, sortObligations } from './kanban-constants'
 
 export interface ObligationKanbanProps {
   obligations: AbnObligationOperational[]
@@ -68,20 +68,22 @@ export function ObligationKanban({
 
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {KANBAN_COLUMNS.map((col) => (
-          <div
-            key={col}
-            className="flex flex-col bg-muted/40 rounded-xl p-3 min-w-[260px] w-[260px]"
-          >
-            <Skeleton className="h-6 w-32 mb-3" />
-            <div className="space-y-2">
-              {Array.from({ length: 2 }).map((_, j) => (
-                <Skeleton key={j} className="h-28 w-full rounded-lg" />
-              ))}
+      <div className="w-full max-w-full min-w-0 overflow-x-auto pb-4">
+        <div className="flex w-max gap-4">
+          {KANBAN_COLUMNS.map((col) => (
+            <div
+              key={col}
+              className="flex flex-col bg-muted/40 rounded-xl p-3 min-w-[300px] w-[300px]"
+            >
+              <Skeleton className="h-6 w-32 mb-3" />
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, j) => (
+                  <Skeleton key={j} className="h-28 w-full rounded-lg" />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     )
   }
@@ -101,42 +103,46 @@ export function ObligationKanban({
 
   return (
     <>
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {columns.map((col) => {
-          const items = obligations.filter((o) => (o.workflow_status || 'A Fazer') === col)
-          return (
-            <div
-              key={col}
-              className="flex flex-col bg-muted/40 rounded-xl min-w-[260px] w-[260px] max-h-[calc(100vh-320px)]"
-            >
-              <div className="flex items-center justify-between p-3 border-b border-border/40 sticky top-0 bg-muted/40 rounded-t-xl z-10">
-                <h3 className="font-semibold text-sm">{col}</h3>
-                <Badge
-                  variant="secondary"
-                  className={cn('text-xs', COLUMN_COLORS[col] || 'bg-slate-200 text-slate-700')}
-                >
-                  {items.length}
-                </Badge>
+      <div className="w-full max-w-full min-w-0 overflow-x-auto pb-4">
+        <div className="flex w-max gap-4">
+          {columns.map((col) => {
+            const items = sortObligations(
+              obligations.filter((o) => (o.workflow_status || 'A Fazer') === col),
+            )
+            return (
+              <div
+                key={col}
+                className="flex flex-col bg-muted/40 rounded-xl min-w-[300px] w-[300px] max-h-[calc(100vh-320px)]"
+              >
+                <div className="flex items-center justify-between p-3 border-b border-border/40 sticky top-0 bg-muted/40 rounded-t-xl z-10">
+                  <h3 className="font-semibold text-sm">{col}</h3>
+                  <Badge
+                    variant="secondary"
+                    className={cn('text-xs', COLUMN_COLORS[col] || 'bg-slate-200 text-slate-700')}
+                  >
+                    {items.length}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-2 overflow-y-auto p-3 flex-1">
+                  {items.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">
+                      Nenhuma obrigação nesta etapa.
+                    </p>
+                  )}
+                  {items.map((task) => (
+                    <ObligationCard
+                      key={task.id}
+                      obligation={task}
+                      processing={processingId === task.id}
+                      onEdit={onEdit}
+                      onStatusSelect={handleStatusSelect}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col gap-2 overflow-y-auto p-3 flex-1">
-                {items.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">
-                    Nenhuma obrigação nesta etapa.
-                  </p>
-                )}
-                {items.map((task) => (
-                  <ObligationCard
-                    key={task.id}
-                    obligation={task}
-                    processing={processingId === task.id}
-                    onEdit={onEdit}
-                    onStatusSelect={handleStatusSelect}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       <AlertDialog

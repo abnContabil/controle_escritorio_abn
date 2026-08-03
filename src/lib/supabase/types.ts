@@ -1135,9 +1135,9 @@ export type Database = {
           notes: string | null
           priority: string
           progress_percentage: number
-          project_id2: string | null
+          project_id2: string
           responsible_user_id: string | null
-          status: string | null
+          status: string
           type: string | null
           updated_at: string
           updated_by: string | null
@@ -1156,9 +1156,9 @@ export type Database = {
           notes?: string | null
           priority?: string
           progress_percentage?: number
-          project_id2?: string | null
+          project_id2?: string
           responsible_user_id?: string | null
-          status?: string | null
+          status?: string
           type?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -1177,9 +1177,9 @@ export type Database = {
           notes?: string | null
           priority?: string
           progress_percentage?: number
-          project_id2?: string | null
+          project_id2?: string
           responsible_user_id?: string | null
-          status?: string | null
+          status?: string
           type?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -15557,6 +15557,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: boolean
       }
+      abn_can_edit_company: { Args: { p_company_id: string }; Returns: boolean }
       abn_can_manage_company: {
         Args: { p_company_id: string }
         Returns: boolean

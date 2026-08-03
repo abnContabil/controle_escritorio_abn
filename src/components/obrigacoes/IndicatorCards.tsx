@@ -51,7 +51,7 @@ const CARDS: CardDef[] = [
 ]
 
 export interface IndicatorCardsProps {
-  indicators: AbnObligationsIndicators | null
+  indicators: AbnObligationsIndicators
   loading: boolean
   activeKey: string | null
   onCardClick: (key: string) => void
@@ -70,27 +70,32 @@ export function IndicatorCards({
         const value = indicators ? indicators[c.key] : 0
         const isActive = activeKey === c.key
         return (
-          <Card
+          <button
             key={c.key}
-            role="button"
-            tabIndex={0}
+            type="button"
             onClick={() => onCardClick(c.key)}
-            className={cn(
-              'p-4 cursor-pointer transition-all ring-1 ring-transparent hover:shadow-md animate-fade-in-up',
-              c.ring,
-              isActive && 'ring-2 ring-primary shadow-md',
-            )}
+            aria-pressed={isActive}
+            aria-label={`${c.label}: ${value} ${value === 1 ? 'obrigação' : 'obrigações'}`}
+            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl animate-fade-in"
           >
-            <Icon className={cn('h-5 w-5', c.color)} />
-            <div className="mt-2">
-              {loading ? (
-                <Skeleton className="h-7 w-12" />
-              ) : (
-                <p className="text-2xl font-bold tracking-tight">{value}</p>
+            <Card
+              className={cn(
+                'p-4 cursor-pointer transition-all ring-1 ring-transparent hover:shadow-md h-full',
+                c.ring,
+                isActive && 'ring-2 ring-primary shadow-md',
               )}
-              <p className="text-xs text-muted-foreground mt-0.5">{c.label}</p>
-            </div>
-          </Card>
+            >
+              <Icon className={cn('h-5 w-5', c.color)} />
+              <div className="mt-2">
+                {loading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold tracking-tight">{value}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-0.5">{c.label}</p>
+              </div>
+            </Card>
+          </button>
         )
       })}
     </div>

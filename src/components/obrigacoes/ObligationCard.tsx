@@ -48,8 +48,7 @@ export function ObligationCard({
   const priorityBadge = PRIORITY_BADGES[o.priority || 'normal'] || PRIORITY_BADGES.normal
   const checklistTotal = o.checklist_total || 0
   const checklistCompleted = o.checklist_completed || 0
-  const checklistText =
-    checklistTotal > 0 ? `${checklistCompleted} de ${checklistTotal} etapas` : 'Sem checklist'
+  const checklistText = checklistTotal > 0 ? `${checklistCompleted}/${checklistTotal}` : '—'
   const progress = o.calculated_progress_percentage ?? o.progress_percentage ?? 0
 
   return (
@@ -62,74 +61,70 @@ export function ObligationCard({
       <CardContent className="p-3 space-y-2">
         <div className="flex justify-between items-start gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium leading-tight truncate">{o.name}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
-              {o.company_name || 'Sem empresa'}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+            <p className="text-sm font-medium leading-tight">{o.name}</p>
+            <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 mt-1">
               {o.type}
             </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  disabled={processing}
-                  aria-label="Ações da obrigação"
-                >
-                  {processing ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <MoreVertical className="h-3 w-3" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Alterar status</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48">
-                    {ALL_STATUSES.map((s) => (
-                      <DropdownMenuItem
-                        key={s}
-                        onClick={() => onStatusSelect(o.id, s)}
-                        disabled={s === o.workflow_status}
-                      >
-                        {s}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onEdit(o)}>
-                  <Edit2 className="mr-2 h-3 w-3" /> Editar obrigação
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onStatusSelect(o.id, 'Cancelado')}
-                  disabled={o.workflow_status === 'Cancelado'}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Ban className="mr-2 h-3 w-3" /> Cancelar obrigação
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                disabled={processing}
+                aria-label="Ações da obrigação"
+              >
+                {processing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreVertical className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Alterar status</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  {ALL_STATUSES.map((s) => (
+                    <DropdownMenuItem
+                      key={s}
+                      onClick={() => onStatusSelect(o.id, s)}
+                      disabled={s === o.workflow_status}
+                    >
+                      {s}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onEdit(o)}>
+                <Edit2 className="mr-2 h-4 w-4" /> Editar obrigação
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onStatusSelect(o.id, 'Cancelado')}
+                disabled={o.workflow_status === 'Cancelado'}
+                className="text-destructive focus:text-destructive"
+              >
+                <Ban className="mr-2 h-4 w-4" /> Cancelar obrigação
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
+        <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
+          {o.company_name || 'Sem empresa'}
+        </p>
+
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-4', priorityBadge)}>
+          <Badge variant="outline" className={cn('text-xs px-1.5 py-0 h-5', priorityBadge)}>
             {priorityLabel}
           </Badge>
-          <Badge
-            variant="secondary"
-            className={cn('text-[10px] px-1.5 py-0 h-4', urgencyStyle.badge)}
-          >
+          <Badge variant="secondary" className={cn('text-xs px-1.5 py-0 h-5', urgencyStyle.badge)}>
             {urgencyText}
           </Badge>
-          <span className="text-[10px] text-muted-foreground">{guideLabel}</span>
+          <span className="text-xs text-muted-foreground">{guideLabel}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -152,7 +147,7 @@ export function ObligationCard({
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Progresso</span>
             <span>{progress}%</span>
           </div>

@@ -11,6 +11,8 @@ export const KANBAN_COLUMNS = [
 
 export const ALL_STATUSES = [...KANBAN_COLUMNS, 'Cancelado'] as const
 
+export const OBLIGATION_TYPES = ['Federal', 'Estadual', 'Municipal'] as const
+
 export const COLUMN_COLORS: Record<string, string> = {
   'A Fazer': 'bg-slate-200 text-slate-700',
   'Em Processamento': 'bg-blue-100 text-blue-700',
@@ -31,11 +33,15 @@ export const GUIDE_STATUS_LABELS: Record<string, string> = {
   vencida: 'Guia vencida',
 }
 
+export const GUIDE_STATUS_KEYS = Object.keys(GUIDE_STATUS_LABELS)
+
 export const PRIORITY_LABELS: Record<string, string> = {
   alta: 'Alta',
   normal: 'Normal',
   baixa: 'Baixa',
 }
+
+export const PRIORITY_KEYS = Object.keys(PRIORITY_LABELS)
 
 export const PRIORITY_BADGES: Record<string, string> = {
   alta: 'bg-red-100 text-red-700 border-red-200',
@@ -56,6 +62,21 @@ export const URGENCY_STYLES: Record<string, { border: string; badge: string }> =
     badge: 'bg-emerald-100 text-emerald-700',
   },
   no_prazo: { border: 'border-l-4 border-l-slate-300', badge: 'bg-slate-100 text-slate-700' },
+}
+
+const PRIORITY_ORDER: Record<string, number> = { alta: 0, normal: 1, baixa: 2 }
+
+export function sortObligations(items: AbnObligationOperational[]): AbnObligationOperational[] {
+  return [...items].sort((a, b) => {
+    if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1
+    const ap = PRIORITY_ORDER[a.priority || 'normal'] ?? 1
+    const bp = PRIORITY_ORDER[b.priority || 'normal'] ?? 1
+    if (ap !== bp) return ap - bp
+    const ad = a.due_date || ''
+    const bd = b.due_date || ''
+    if (ad !== bd) return ad.localeCompare(bd)
+    return (a.kanban_position || 0) - (b.kanban_position || 0)
+  })
 }
 
 export function getUrgencyKey(o: AbnObligationOperational): string {

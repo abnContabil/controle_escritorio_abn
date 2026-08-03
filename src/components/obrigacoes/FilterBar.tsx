@@ -15,7 +15,7 @@ export interface FilterBarProps {
   setCompetencia: (v: string) => void
   company: string
   setCompany: (v: string) => void
-  companies: string[]
+  companies: { id: string; name: string }[]
   workflowStatus: string
   setWorkflowStatus: (v: string) => void
   workflowStatuses: string[]
@@ -41,10 +41,10 @@ export function FilterBar(props: FilterBarProps) {
       <div className="space-y-1">
         <Label className="text-xs">Competência</Label>
         <Input
-          placeholder="MM/AAAA"
+          type="month"
           value={props.competencia}
           onChange={(e) => props.setCompetencia(e.target.value)}
-          className="w-[130px] h-9"
+          className="w-[150px] h-9"
         />
       </div>
       <div className="space-y-1">
@@ -55,8 +55,8 @@ export function FilterBar(props: FilterBarProps) {
           </SelectTrigger>
           <SelectContent>
             {props.companies.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
               </SelectItem>
             ))}
           </SelectContent>
