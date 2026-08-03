@@ -20,6 +20,7 @@ import {
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
 import { useAbnDashboardKpis } from '@/hooks/use-abn-dashboard-kpis'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Index() {
   const {
@@ -30,6 +31,8 @@ export default function Index() {
     error: kpisError,
     refetch: refetchKpis,
   } = useAbnDashboardKpis()
+
+  const { profileInitError, retryProfileInit } = useAuth()
 
   const empresasAtivas = kpis?.empresas_ativas ?? companies.length
   const obrigacoesPendentes = kpis?.obrigacoes_pendentes ?? 0
@@ -83,6 +86,22 @@ export default function Index() {
           Visão gerencial e acompanhamento estratégico do escritório.
         </p>
       </div>
+
+      {profileInitError && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-destructive">Erro ao inicializar perfil</p>
+              <p className="text-xs text-muted-foreground">{profileInitError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={retryProfileInit}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </div>
+      )}
 
       {kpisError && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">

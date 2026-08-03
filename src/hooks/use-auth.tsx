@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  ReactNode,
+} from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
@@ -9,6 +17,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
   loading: boolean
+  profileInitError: string | null
+  retryProfileInit: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -41,19 +51,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const profileEnsuredRef = useRef(false)
+  const [profileInitError, setProfileInitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user && !profileEnsuredRef.current) {
       profileEnsuredRef.current = true
+      setProfileInitError(null)
       supabase.rpc('abn_ensure_profile').then(({ error }) => {
         if (error) {
           console.error('Erro ao inicializar perfil (abn_ensure_profile):', error)
+          setProfileInitError(error.message || 'Não foi possível inicializar seu perfil.')
         }
       })
     } else if (!user) {
       profileEnsuredRef.current = false
+      setProfileInitError(null)
     }
   }, [user])
+
+  const retryProfileInit = useCallback(() => {
+    setProfileInitError(null)
+    supabase.rpc('abn_ensure_profile').then(({ error }) => {
+      if (error) {
+        console.error('Erro ao inicializar perfil (abn_ensure_profile):', error)
+        setProfileInitError(error.message || 'Não foi possível inicializar seu perfil.')
+      }
+    })
+  }, [])
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
@@ -73,7 +97,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, signUp, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        signUp,
+        signIn,
+        signOut,
+        loading,
+        profileInitError,
+        retryProfileInit,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
