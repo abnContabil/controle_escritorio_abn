@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 
 export type ResponsibleUser = {
   id: string
@@ -21,13 +21,13 @@ export function useResponsibleUsers(companyId: string | undefined) {
     const load = async () => {
       setLoading(true)
       try {
-        const { data: company } = await supabase
+        const { data: company } = await contabilIoDb
           .from('abn_companies')
           .select('user_id')
           .eq('id', companyId)
           .single()
 
-        const { data: companyUsers } = await supabase
+        const { data: companyUsers } = await contabilIoDb
           .from('abn_company_users')
           .select('user_id')
           .eq('company_id', companyId)
@@ -44,7 +44,7 @@ export function useResponsibleUsers(companyId: string | undefined) {
           return
         }
 
-        const { data: profiles } = await supabase
+        const { data: profiles } = await contabilIoDb
           .from('abn_profiles')
           .select('id, name, email')
           .in('id', allUserIds)

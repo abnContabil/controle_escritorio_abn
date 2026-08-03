@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 import { useToast } from '@/hooks/use-toast'
 
 export type AbnObligationOperational = {
@@ -75,7 +76,7 @@ export function useAbnObligations() {
   const fetchObligations = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data, error: err } = await supabase
+    const { data, error: err } = await contabilIoDb
       .from('vw_abn_obligations_operational')
       .select(OBLIGATION_FIELDS)
       .order('kanban_position', { ascending: true })
@@ -107,7 +108,7 @@ export function useAbnObligations() {
       return false
     }
 
-    const { id, ...rawData } = obligation
+    const { id, project_id, project_id2, ...rawData } = obligation as Record<string, unknown>
 
     const dataToSave: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(rawData)) {
@@ -124,7 +125,7 @@ export function useAbnObligations() {
     }
 
     if (id) {
-      const { error: err } = await supabase
+      const { error: err } = await contabilIoDb
         .from('abn_obligations')
         .update({ ...dataToSave, updated_at: new Date().toISOString(), updated_by: userId })
         .eq('id', id)
@@ -135,7 +136,7 @@ export function useAbnObligations() {
       }
       toast({ title: 'Sucesso', description: 'Obrigação atualizada com sucesso' })
     } else {
-      const { error: err } = await supabase
+      const { error: err } = await contabilIoDb
         .from('abn_obligations')
         .insert([{ ...dataToSave, updated_by: userId }])
 
@@ -151,7 +152,7 @@ export function useAbnObligations() {
   }
 
   const deleteObligation = async (id: string) => {
-    const { error: err } = await supabase.from('abn_obligations').delete().eq('id', id)
+    const { error: err } = await contabilIoDb.from('abn_obligations').delete().eq('id', id)
     if (err) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
       return false
@@ -163,7 +164,7 @@ export function useAbnObligations() {
 
   const updateStatus = async (id: string, status: string) => {
     setUpdating(true)
-    const { data, error: err } = await supabase.rpc('abn_set_obligation_status', {
+    const { data, error: err } = await contabilIoDb.rpc('abn_set_obligation_status', {
       p_obligation_id: id,
       p_status: status,
     })

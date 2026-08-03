@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useAbnCompanies } from '@/hooks/use-abn-companies'
-import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Table,
@@ -24,22 +24,31 @@ import { Users as UsersIcon, ShieldAlert, Plus, Edit } from 'lucide-react'
 import { AddUserDialog } from '@/components/equipe/AddUserDialog'
 import { EditUserDialog } from '@/components/equipe/EditUserDialog'
 
+type CompanyUser = {
+  id: string
+  company_id: string
+  user_id: string
+  role: string
+  status: string
+  name: string
+  email: string
+}
+
 export default function Equipe() {
   const { user } = useAuth()
   const { companies, loading: companiesLoading } = useAbnCompanies()
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('')
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<CompanyUser[]>([])
   const [myRoles, setMyRoles] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [editUser, setEditUser] = useState<any>(null)
+  const [editUser, setEditUser] = useState<CompanyUser | null>(null)
 
   useEffect(() => {
     const checkRoles = async () => {
       if (!user) return
-      const { data, error } = await supabase
+      const { data, error } = await contabilIoDb
         .from('abn_company_users')
         .select('company_id, role')
         .eq('user_id', user.id)
@@ -76,7 +85,6 @@ export default function Equipe() {
       const role = myRoles[selectedCompanyId]
       const isOwner = company?.user_id === user.id
       const hasAdminRole = role === 'proprietario' || role === 'admin'
-
       const isAdm = isOwner || hasAdminRole
       setIsAdmin(isAdm)
 
@@ -90,7 +98,7 @@ export default function Equipe() {
 
   const fetchUsers = async (companyId: string) => {
     setLoading(true)
-    const { data: companyUsers, error: usersError } = await supabase
+    const { data: companyUsers, error: usersError } = await contabilIoDb
       .from('abn_company_users')
       .select('*')
       .eq('company_id', companyId)
@@ -105,7 +113,7 @@ export default function Equipe() {
 
     if (companyUsers && companyUsers.length > 0) {
       const userIds = companyUsers.map((u) => u.user_id)
-      const { data: profiles, error: profilesError } = await supabase
+      const { data: profiles, error: profilesError } = await contabilIoDb
         .from('abn_profiles')
         .select('id, name, email')
         .in('id', userIds)

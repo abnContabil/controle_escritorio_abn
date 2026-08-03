@@ -1,24 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -26,172 +18,114 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { toast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
+import type { AbnCompany } from '@/hooks/use-abn-companies'
 
-const schema = z.object({
-  email: z.string().email('E-mail inválido'),
-  role: z.string().min(1, 'Selecione um perfil'),
-  company_id: z.string().min(1, 'Selecione uma empresa'),
-})
-
-type FormValues = z.infer<typeof schema>
-
-export function AddUserDialog({
-  open,
-  onOpenChange,
-  companies,
-  onSuccess,
-}: {
+interface AddUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  companies: any[]
+  companies: AbnCompany[]
   onSuccess: (companyId: string) => void
-}) {
-  const [loading, setLoading] = useState(false)
+}
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: '', role: '', company_id: '' },
-  })
+export function AddUserDialog({ open, onOpenChange, companies, onSuccess }: AddUserDialogProps) {
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('visualizador')
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
-    if (open) {
-      form.reset({ email: '', role: '', company_id: '' })
+    if (open && companies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0].id)
     }
-  }, [open, form])
+    if (!open) {
+      setEmail('')
+      setRole('visualizador')
+    }
+  }, [open, companies, selectedCompanyId])
 
-  const onSubmit = async (values: FormValues) => {
+  const handleSubmit = async () => {
+    if (!selectedCompanyId || !email) {
+      toast({ title: 'Erro', description: 'Preencha todos os campos.', variant: 'destructive' })
+      return
+    }
     setLoading(true)
-    try {
-      const { data, error } = await supabase.rpc('abn_add_company_user', {
-        p_company_id: values.company_id,
-        p_email: values.email,
-        p_role: values.role,
+    const { error } = await contabilIoDb.rpc('abn_add_company_user', {
+      p_company_id: selectedCompanyId,
+      p_user_email: email,
+      p_role: role,
+    })
+    if (error) {
+      toast({
+        title: 'Erro ao adicionar usuário',
+        description: error.message,
+        variant: 'destructive',
       })
-
-      if (error) {
-        console.error('Technical error adding user:', error)
-        toast({
-          title: 'Erro Técnico',
-          description: 'Ocorreu um erro ao comunicar com o servidor. Tente novamente.',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (data && data.success === false) {
-        toast({
-          title: 'Aviso',
-          description: data.message,
-          variant: 'destructive',
-        })
-        return
-      }
-
-      toast({ title: 'Sucesso', description: 'Usuário adicionado à equipe com sucesso.' })
-      form.reset()
-      onSuccess(values.company_id)
-      onOpenChange(false)
-    } finally {
       setLoading(false)
+      return
     }
+    toast({ title: 'Sucesso', description: 'Usuário adicionado com sucesso.' })
+    onOpenChange(false)
+    onSuccess(selectedCompanyId)
+    setLoading(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar usuário</DialogTitle>
-          <DialogDescription>
-            Vincule um usuário existente à equipe de uma empresa.
-          </DialogDescription>
+          <DialogTitle>Adicionar Usuário</DialogTitle>
+          <DialogDescription>Adicione um novo membro à equipe da empresa.</DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-            <FormField
-              control={form.control}
-              name="company_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma empresa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {companies.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.razao_social}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Empresa</Label>
+            <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.razao_social}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Email do Usuário</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="usuario@email.com"
             />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail</FormLabel>
-                  <FormControl>
-                    <Input placeholder="usuario@email.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Perfil</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um perfil" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="proprietario">Proprietário</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="contador">Contador</SelectItem>
-                      <SelectItem value="auxiliar">Auxiliar</SelectItem>
-                      <SelectItem value="visualizador">Visualizador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-700 hover:bg-blue-800 text-white"
-              >
-                {loading ? 'Adicionando...' : 'Adicionar'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          </div>
+          <div className="space-y-2">
+            <Label>Perfil</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="contador">Contador</SelectItem>
+                <SelectItem value="auxiliar">Auxiliar</SelectItem>
+                <SelectItem value="visualizador">Visualizador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Adicionando...' : 'Adicionar'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

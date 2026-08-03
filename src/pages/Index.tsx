@@ -19,15 +19,17 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
 import { useAbnCompanies } from '@/hooks/use-abn-companies'
 import { useAbnObligations } from '@/hooks/use-abn-obligations'
+import { useAbnDashboardKpis } from '@/hooks/use-abn-dashboard-kpis'
 
 export default function Index() {
   const { companies } = useAbnCompanies()
   const { obligations } = useAbnObligations()
+  const { kpis } = useAbnDashboardKpis()
 
-  const pendingObligations = obligations.filter((o) => o.status !== 'Concluído').length
-  const completedObligations = obligations.filter((o) => o.status === 'Concluído').length
-  const totalObligations = obligations.length || 1 // prevent div by zero
-  const deliveryRate = Math.round((completedObligations / totalObligations) * 100)
+  const empresasAtivas = kpis?.empresas_ativas ?? companies.length
+  const obrigacoesPendentes = kpis?.obrigacoes_pendentes ?? 0
+  const impostosApurar = kpis?.impostos_a_apurar ?? 0
+  const taxaEntrega = kpis?.taxa_entrega ?? 0
 
   const upcomingDeadlines = useMemo(() => {
     return obligations
@@ -36,7 +38,6 @@ export default function Index() {
       .slice(0, 6)
   }, [obligations])
 
-  // Aggregate Data for Charts
   const regimeData = useMemo(() => {
     const counts = { 'Simples Nacional': 0, 'Lucro Presumido': 0, 'Lucro Real': 0 }
     companies.forEach((c) => {
@@ -67,9 +68,7 @@ export default function Index() {
     real: { label: 'Lucro Real', color: 'hsl(var(--chart-3))' },
   }
 
-  const barConfig = {
-    value: { label: 'Obrigações', color: 'hsl(var(--primary))' },
-  }
+  const barConfig = { value: { label: 'Obrigações', color: 'hsl(var(--primary))' } }
 
   return (
     <div className="space-y-8">
@@ -80,7 +79,6 @@ export default function Index() {
         </p>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -88,7 +86,7 @@ export default function Index() {
             <Building2 className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{companies.length}</div>
+            <div className="text-2xl font-bold">{empresasAtivas}</div>
             <p className="text-xs text-muted-foreground">Cadastradas na base</p>
           </CardContent>
         </Card>
@@ -98,7 +96,7 @@ export default function Index() {
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingObligations}</div>
+            <div className="text-2xl font-bold">{obrigacoesPendentes}</div>
             <p className="text-xs text-muted-foreground">Aguardando processamento</p>
           </CardContent>
         </Card>
@@ -108,7 +106,7 @@ export default function Index() {
             <TrendingUp className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.max(0, pendingObligations - 2)}</div>
+            <div className="text-2xl font-bold">{impostosApurar}</div>
             <p className="text-xs text-muted-foreground">Competência atual</p>
           </CardContent>
         </Card>
@@ -118,7 +116,7 @@ export default function Index() {
             <CheckCircle2 className="h-4 w-4 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{obligations.length === 0 ? 0 : deliveryRate}%</div>
+            <div className="text-2xl font-bold">{taxaEntrega}%</div>
             <p className="text-xs text-muted-foreground">Progresso geral</p>
           </CardContent>
         </Card>
@@ -203,7 +201,6 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Upcoming Deadlines List */}
       <Card className="shadow-subtle">
         <CardHeader>
           <CardTitle>Próximos Vencimentos</CardTitle>
@@ -222,7 +219,7 @@ export default function Index() {
                   <div className="flex flex-col gap-1 overflow-hidden pr-2">
                     <span className="text-sm font-semibold truncate">{obr.name}</span>
                     <span className="text-xs text-muted-foreground truncate">
-                      {obr.abn_companies?.razao_social || 'Empresa não vinculada'}
+                      {obr.company_name || 'Empresa não vinculada'}
                     </span>
                     <div className="flex items-center text-xs text-slate-500 mt-1">
                       <Clock className="w-3 h-3 mr-1" />

@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 import { useToast } from '@/hooks/use-toast'
 
 export type AbnCompany = {
   id: string
+  user_id?: string
+  office_id?: string
   razao_social: string
   cnpj: string
   regime_tributario: string
@@ -21,7 +24,7 @@ export function useAbnCompanies() {
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
+    const { data, error } = await contabilIoDb
       .from('vw_abn_companies_safe')
       .select('*')
       .order('created_at', { ascending: false })
@@ -56,15 +59,23 @@ export function useAbnCompanies() {
       return false
     }
 
+    const { project_id, project_id2, user_id, office_id, ...cleanData } = company as Record<
+      string,
+      unknown
+    >
+
     if (company.id) {
       const updateData: Record<string, unknown> = {
-        ...company,
+        ...cleanData,
         updated_at: new Date().toISOString(),
       }
       if (company.status === 'Ativo') updateData.active = true
       if (company.status === 'Inativo') updateData.active = false
 
-      const { error } = await supabase.from('abn_companies').update(updateData).eq('id', company.id)
+      const { error } = await contabilIoDb
+        .from('abn_companies')
+        .update(updateData)
+        .eq('id', company.id)
 
       if (error) {
         console.error('Erro ao atualizar empresa:', error)
@@ -77,11 +88,11 @@ export function useAbnCompanies() {
       }
       toast({ title: 'Sucesso', description: 'Empresa atualizada com sucesso' })
     } else {
-      const insertData: Record<string, unknown> = { ...company, user_id: userId }
+      const insertData: Record<string, unknown> = { ...cleanData }
       if (company.status === 'Ativo' || !company.status) insertData.active = true
       if (company.status === 'Inativo') insertData.active = false
 
-      const { error } = await supabase.from('abn_companies').insert([insertData])
+      const { error } = await contabilIoDb.from('abn_companies').insert([insertData])
 
       if (error) {
         console.error('Erro ao cadastrar empresa:', error)
@@ -104,7 +115,7 @@ export function useAbnCompanies() {
     const newActive = !isActive
     const newStatus = newActive ? 'Ativo' : 'Inativo'
 
-    const { error } = await supabase
+    const { error } = await contabilIoDb
       .from('abn_companies')
       .update({
         active: newActive,
