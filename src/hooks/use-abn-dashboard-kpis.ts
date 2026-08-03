@@ -39,7 +39,7 @@ export function useAbnDashboardKpis() {
       const [companiesRes, indicatorsRes, obligationsRes] = await Promise.all([
         supabase
           .from('vw_abn_companies_safe')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: false })
           .eq('active', true),
         supabase.from('vw_abn_obligations_indicators').select('*').limit(1).maybeSingle(),
         supabase.from('vw_abn_obligations_operational').select('status, type'),
