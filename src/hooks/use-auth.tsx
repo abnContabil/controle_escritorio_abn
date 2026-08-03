@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
-import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 
 interface AuthContextType {
   user: User | null
@@ -46,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user && !profileEnsuredRef.current) {
       profileEnsuredRef.current = true
-      contabilIoDb.rpc('abn_ensure_profile').then(({ error }) => {
+      supabase.rpc('abn_ensure_profile').then(({ error }) => {
         if (error) {
           console.error('Erro ao inicializar perfil (abn_ensure_profile):', error)
         }
