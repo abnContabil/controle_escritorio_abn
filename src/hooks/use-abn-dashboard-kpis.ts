@@ -26,8 +26,24 @@ function isTaxType(type: string | null | undefined): boolean {
   return TAX_TYPE_PATTERNS.some((p) => lower.includes(p))
 }
 
+export type DashboardCompany = {
+  id: string
+  regime_tributario: string | null
+}
+
+export type DashboardObligation = {
+  id: string
+  name: string
+  type: string
+  status: string
+  due_date: string
+  company_name: string | null
+}
+
 export function useAbnDashboardKpis() {
   const [kpis, setKpis] = useState<ContabilIoDashboardKpis | null>(null)
+  const [companies, setCompanies] = useState<DashboardCompany[]>([])
+  const [obligations, setObligations] = useState<DashboardObligation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,19 +53,19 @@ export function useAbnDashboardKpis() {
 
     try {
       const [companiesRes, indicatorsRes, obligationsRes] = await Promise.all([
-        supabase
-          .from('vw_abn_companies_safe')
-          .select('id', { count: 'exact', head: false })
-          .eq('active', true),
+        supabase.from('vw_abn_companies_safe').select('id, regime_tributario').eq('active', true),
         supabase.from('vw_abn_obligations_indicators').select('*').limit(1).maybeSingle(),
-        supabase.from('vw_abn_obligations_operational').select('status, type'),
+        supabase
+          .from('vw_abn_obligations_operational')
+          .select('id, name, type, status, due_date, company_name'),
       ])
 
       if (companiesRes.error) throw companiesRes.error
       if (indicatorsRes.error) throw indicatorsRes.error
       if (obligationsRes.error) throw obligationsRes.error
 
-      const empresasAtivas = companiesRes.count ?? 0
+      const companiesData = (companiesRes.data as DashboardCompany[]) || []
+      const empresasAtivas = companiesData.length
 
       const indicators = indicatorsRes.data as {
         atrasadas: number
@@ -64,13 +80,13 @@ export function useAbnDashboardKpis() {
         ? Math.max(0, indicators.total_competencia_atual - indicators.concluidas_no_mes)
         : 0
 
-      const obligations = (obligationsRes.data as { status: string; type: string }[]) || []
-      const impostosApurar = obligations.filter(
+      const obligationsData = (obligationsRes.data as DashboardObligation[]) || []
+      const impostosApurar = obligationsData.filter(
         (o) => isTaxType(o.type) && o.status !== 'Concluído',
       ).length
 
-      const totalObligations = obligations.length
-      const concludedObligations = obligations.filter((o) => o.status === 'Concluído').length
+      const totalObligations = obligationsData.length
+      const concludedObligations = obligationsData.filter((o) => o.status === 'Concluído').length
       const taxaEntrega =
         totalObligations > 0 ? Math.round((concludedObligations / totalObligations) * 100) : 0
 
@@ -80,11 +96,15 @@ export function useAbnDashboardKpis() {
         impostos_a_apurar: impostosApurar,
         taxa_entrega: taxaEntrega,
       })
+      setCompanies(companiesData)
+      setObligations(obligationsData)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar indicadores'
       console.error('Erro ao buscar KPIs do dashboard:', err)
       setError(message)
       setKpis(null)
+      setCompanies([])
+      setObligations([])
     }
     setLoading(false)
   }, [])
@@ -93,5 +113,5 @@ export function useAbnDashboardKpis() {
     fetchKpis()
   }, [fetchKpis])
 
-  return { kpis, loading, error, refetch: fetchKpis }
+  return { kpis, companies, obligations, loading, error, refetch: fetchKpis }
 }

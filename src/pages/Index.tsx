@@ -19,15 +19,13 @@ import {
 } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
-import { useAbnCompanies } from '@/hooks/use-abn-companies'
-import { useAbnObligations } from '@/hooks/use-abn-obligations'
 import { useAbnDashboardKpis } from '@/hooks/use-abn-dashboard-kpis'
 
 export default function Index() {
-  const { companies } = useAbnCompanies()
-  const { obligations } = useAbnObligations()
   const {
     kpis,
+    companies,
+    obligations,
     loading: kpisLoading,
     error: kpisError,
     refetch: refetchKpis,
