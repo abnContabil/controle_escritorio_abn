@@ -1,16 +1,8 @@
-import { useState, useMemo } from 'react'
-import {
-  FileDown,
-  RefreshCw,
-  FileWarning,
-  CheckCircle,
-  FileText,
-  AlertTriangle,
-} from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { RefreshCw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -18,70 +10,72 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { XmlSummaryCards } from '@/components/xml/XmlSummaryCards'
+import { XmlTable } from '@/components/xml/XmlTable'
+import { XmlDetailDrawer } from '@/components/xml/XmlDetailDrawer'
+import { normalizeText } from '@/components/xml/xml-utils'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { useXmlCompanies, useXmlControl, computeIndicators } from '@/hooks/use-xml-control'
+  useXmlCompanies,
+  useXmlControl,
+  computeIndicators,
+  type XmlControlRecord,
+} from '@/hooks/use-xml-control'
 
-const formatCurrency = (value: number | null) =>
-  value != null
-    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-    : '—'
-
-const formatDate = (dateStr: string | null) =>
-  dateStr ? new Date(dateStr).toLocaleDateString('pt-BR') : '—'
-
-function StatusIcon({ status }: { status: string | null }) {
-  if (!status) return <RefreshCw className="h-4 w-4 text-amber-500 mr-1" />
-  const s = status.toLowerCase()
-  if (s.includes('sincroniz') || s.includes('conclu'))
-    return <CheckCircle className="h-4 w-4 text-emerald-600 mr-1" />
-  if (s.includes('erro') || s.includes('falh'))
-    return <FileWarning className="h-4 w-4 text-destructive mr-1" />
-  return <RefreshCw className="h-4 w-4 text-amber-500 mr-1" />
-}
-
-function KpiCard({
-  title,
-  value,
-  loading,
-  colorClass,
-  borderClass,
-}: {
-  title: string
-  value: number
-  loading: boolean
-  colorClass: string
-  borderClass: string
-}) {
-  return (
-    <Card className={borderClass}>
-      <CardHeader className="pb-2">
-        <CardTitle className={`text-sm font-medium ${colorClass}`}>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-8 w-16" />
-        ) : (
-          <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+const PAGE_SIZE = 10
 
 export default function XmlHub() {
   const { companies, loading: loadingCompanies } = useXmlCompanies()
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
+  const [monthYear, setMonthYear] = useState<string>('')
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [page, setPage] = useState(0)
+  const [selectedRecord, setSelectedRecord] = useState<XmlControlRecord | null>(null)
 
-  const effectiveCompanyId = selectedCompanyId ?? companies[0]?.id ?? null
-  const { records, loading, error, refetch } = useXmlControl(effectiveCompanyId)
-  const indicators = useMemo(() => computeIndicators(records), [records])
+  const { records, loading, error, refetch } = useXmlControl(selectedCompanyId, monthYear || null)
+
+  const statusOptions = useMemo(() => {
+    const set = new Set<string>()
+    records.forEach((r) => {
+      if (r.status) set.add(r.status)
+    })
+    return Array.from(set).sort()
+  }, [records])
+
+  const filteredRecords = useMemo(() => {
+    let result = records
+    if (typeFilter !== 'all') {
+      result = result.filter((r) => normalizeText(r.type) === typeFilter)
+    }
+    if (statusFilter !== 'all') {
+      result = result.filter((r) => r.status === statusFilter)
+    }
+    if (search.trim()) {
+      const q = normalizeText(search.trim())
+      result = result.filter(
+        (r) =>
+          normalizeText(r.chave_acesso).includes(q) ||
+          normalizeText(r.numero).includes(q) ||
+          normalizeText(r.emitente_cnpj).includes(q) ||
+          normalizeText(r.destinatario_cnpj).includes(q) ||
+          normalizeText(r.emitente_nome).includes(q) ||
+          normalizeText(r.destinatario_nome).includes(q),
+      )
+    }
+    return result
+  }, [records, typeFilter, statusFilter, search])
+
+  const indicators = useMemo(() => computeIndicators(filteredRecords), [filteredRecords])
+
+  const paginatedRecords = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return filteredRecords.slice(start, start + PAGE_SIZE)
+  }, [filteredRecords, page])
+
+  useEffect(() => {
+    setPage(0)
+  }, [selectedCompanyId, monthYear, search, typeFilter, statusFilter])
 
   return (
     <div className="space-y-6">
@@ -90,149 +84,108 @@ export default function XmlHub() {
           <h1 className="text-3xl font-bold tracking-tight">XML Hub</h1>
           <p className="text-muted-foreground mt-1">Central de captura de NFe, CTe e NFSe.</p>
         </div>
-        <Button onClick={() => refetch()} disabled={loading || !effectiveCompanyId}>
+        <Button onClick={() => refetch()} disabled={loading || !selectedCompanyId}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Atualizando...' : 'Atualizar'}
+          {loading ? 'Recarregando...' : 'Recarregar dados'}
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Empresa:</span>
-        {loadingCompanies ? (
-          <Skeleton className="h-9 w-64" />
-        ) : companies.length === 0 ? (
-          <span className="text-sm text-muted-foreground">Nenhuma empresa disponível</span>
-        ) : (
-          <Select value={effectiveCompanyId ?? undefined} onValueChange={setSelectedCompanyId}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Selecione uma empresa" />
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Empresa</label>
+          {loadingCompanies ? (
+            <Skeleton className="h-9 w-full" />
+          ) : (
+            <Select value={selectedCompanyId ?? undefined} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione uma empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.razao_social} — {c.cnpj || 'sem CNPJ'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Competência</label>
+          <Input
+            type="month"
+            value={monthYear}
+            onChange={(e) => setMonthYear(e.target.value)}
+            placeholder="YYYY-MM"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Busca</label>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Chave, número, CNPJ ou nome..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {companies.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.razao_social}
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="entrada">Entrada</SelectItem>
+              <SelectItem value="saida">Saída</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Status</label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {statusOptions.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <KpiCard
-          title="Capturados com Sucesso"
-          value={indicators.sincronizados}
-          loading={loading}
-          colorClass="text-emerald-700"
-          borderClass="bg-emerald-500/10 border-emerald-500/20"
-        />
-        <KpiCard
-          title="Pendentes de Processamento"
-          value={indicators.pendentes}
-          loading={loading}
-          colorClass="text-amber-700"
-          borderClass="bg-amber-500/10 border-amber-500/20"
-        />
-        <KpiCard
-          title="Erros de Certificado"
-          value={indicators.erros}
-          loading={loading}
-          colorClass="text-destructive"
-          borderClass="bg-destructive/10 border-destructive/20"
-        />
-      </div>
+      <XmlSummaryCards indicators={indicators} loading={loading} />
 
-      {error ? (
-        <Card className="shadow-subtle">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <AlertTriangle className="h-10 w-10 text-destructive mb-3" />
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar novamente
-            </Button>
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <Card className="shadow-subtle">
-          <CardHeader>
-            <CardTitle>Últimos Documentos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      ) : records.length === 0 ? (
-        <Card className="shadow-subtle">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-lg font-medium">Nenhum documento importado</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md">
-              Os documentos aparecerão aqui somente após uma importação real para a empresa
-              selecionada.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="shadow-subtle">
-          <CardHeader>
-            <CardTitle>Últimos Documentos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Chave de Acesso</TableHead>
-                  <TableHead>Emissão</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.map((xml) => {
-                  const company = companies.find((c) => c.id === xml.company_id)
-                  return (
-                    <TableRow key={xml.id}>
-                      <TableCell className="font-medium">
-                        {company?.razao_social ?? xml.emitente_nome ?? '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{xml.type || xml.tipo_documento || '—'}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {xml.chave_acesso ?? '—'}
-                      </TableCell>
-                      <TableCell>{formatDate(xml.data_emissao)}</TableCell>
-                      <TableCell>{formatCurrency(xml.valor_total)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <StatusIcon status={xml.status} />
-                          <span className="text-sm">{xml.status ?? '—'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Download XML"
-                          disabled={!xml.nome_arquivo}
-                        >
-                          <FileDown className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <XmlTable
+        records={paginatedRecords}
+        totalRecords={filteredRecords.length}
+        loading={loading}
+        error={error}
+        onRetry={refetch}
+        onViewDetail={setSelectedRecord}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+        hasCompanySelected={!!selectedCompanyId}
+      />
+
+      <XmlDetailDrawer
+        record={selectedRecord}
+        open={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+      />
     </div>
   )
 }
