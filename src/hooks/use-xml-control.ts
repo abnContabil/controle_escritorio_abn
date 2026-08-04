@@ -1,12 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
-
-export type XmlCompany = {
-  id: string
-  razao_social: string
-  cnpj: string | null
-}
 
 export type XmlControlRecord = {
   id: string
@@ -32,6 +25,8 @@ export type XmlControlRecord = {
   uf_destinatario: string | null
   tipo_financeiro: string | null
   financeiro_gerado: boolean | null
+  financeiro_gerado_em: string | null
+  lancamento_id: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -63,33 +58,7 @@ export function computeIndicators(records: XmlControlRecord[]): XmlIndicators {
 }
 
 const XML_SELECT_COLUMNS =
-  'id, company_id, type, status, chave_acesso, tipo_documento, numero, serie, data_emissao, valor_total, emitente_cnpj, emitente_nome, destinatario_cnpj, destinatario_nome, nome_arquivo, xml_texto, month_year, natureza_operacao, protocolo_autorizacao, uf_emitente, uf_destinatario, tipo_financeiro, financeiro_gerado, created_at, updated_at'
-
-export function useXmlCompanies() {
-  const [companies, setCompanies] = useState<XmlCompany[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      const { data, error } = await contabilIoDb
-        .from('vw_abn_companies_safe')
-        .select('id, razao_social, cnpj')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        setError('Não foi possível carregar a lista de empresas.')
-        setCompanies([])
-      } else {
-        setCompanies(data || [])
-      }
-      setLoading(false)
-    }
-    fetchCompanies()
-  }, [])
-
-  return { companies, loading, error }
-}
+  'id, company_id, type, status, chave_acesso, tipo_documento, numero, serie, data_emissao, valor_total, emitente_cnpj, emitente_nome, destinatario_cnpj, destinatario_nome, nome_arquivo, xml_texto, month_year, natureza_operacao, protocolo_autorizacao, uf_emitente, uf_destinatario, tipo_financeiro, financeiro_gerado, financeiro_gerado_em, lancamento_id, created_at, updated_at'
 
 export function useXmlControl(companyId: string | null, monthYear: string | null) {
   const [records, setRecords] = useState<XmlControlRecord[]>([])
@@ -104,24 +73,33 @@ export function useXmlControl(companyId: string | null, monthYear: string | null
     }
     setLoading(true)
     setError(null)
+    let data: XmlControlRecord[] | null = null
+    let queryError: { message: string } | null = null
 
-    let query = supabase
-      .from('abn_xml_control')
-      .select(XML_SELECT_COLUMNS)
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
-
-    if (monthYear) {
-      query = query.eq('month_year', monthYear)
+    const rpcResult = await supabase.rpc('abn_get_xml_hub', {
+      p_company_id: companyId,
+      p_month_year: monthYear || null,
+      p_limit: 10000,
+    })
+    if (!rpcResult.error && rpcResult.data) {
+      data = rpcResult.data as XmlControlRecord[]
+    } else {
+      let query = supabase
+        .from('abn_xml_control')
+        .select(XML_SELECT_COLUMNS)
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+      if (monthYear) query = query.eq('month_year', monthYear)
+      const result = await query
+      if (result.error) queryError = result.error
+      else data = result.data as XmlControlRecord[]
     }
 
-    const { data, error } = await query
-
-    if (error) {
+    if (queryError) {
       setError('Não foi possível carregar os documentos. Verifique sua conexão e tente novamente.')
       setRecords([])
     } else {
-      setRecords((data || []) as XmlControlRecord[])
+      setRecords(data || [])
     }
     setLoading(false)
   }, [companyId, monthYear])
@@ -129,6 +107,63 @@ export function useXmlControl(companyId: string | null, monthYear: string | null
   useEffect(() => {
     fetchXmls()
   }, [fetchXmls])
-
   return { records, loading, error, refetch: fetchXmls }
+}
+
+export type XmlActionResult = { success: boolean; error: string | null }
+
+export async function importXmlTexto(
+  companyId: string,
+  nomeArquivo: string,
+  xmlTexto: string,
+): Promise<{ imported: boolean; duplicate: boolean; error: string | null }> {
+  const { error } = await supabase.rpc('abn_importar_xml_texto', {
+    p_company_id: companyId,
+    p_nome_arquivo: nomeArquivo,
+    p_xml_texto: xmlTexto,
+  })
+  if (error) {
+    const msg = error.message.toLowerCase()
+    if (msg.includes('duplic') || msg.includes('ja existe') || msg.includes('already')) {
+      return { imported: false, duplicate: true, error: null }
+    }
+    return { imported: false, duplicate: false, error: error.message }
+  }
+  return { imported: true, duplicate: false, error: null }
+}
+
+export async function generateFinanceiro(
+  companyId: string,
+  xmlId: string,
+): Promise<XmlActionResult> {
+  const { error } = await supabase.rpc('abn_gerar_financeiro_xml_auto', {
+    p_company_id: companyId,
+    p_xml_id: xmlId,
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true, error: null }
+}
+
+export async function deleteXml(xmlId: string): Promise<XmlActionResult> {
+  const { error } = await supabase.rpc('abn_excluir_xml', { p_xml_id: xmlId })
+  if (error) return { success: false, error: error.message }
+  return { success: true, error: null }
+}
+
+export async function updateXmlControlFields(
+  xmlId: string,
+  fields: { status: string; type: string; month_year: string; natureza_operacao: string },
+): Promise<XmlActionResult> {
+  const { error } = await supabase
+    .from('abn_xml_control')
+    .update({
+      status: fields.status,
+      type: fields.type,
+      month_year: fields.month_year,
+      natureza_operacao: fields.natureza_operacao,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', xmlId)
+  if (error) return { success: false, error: error.message }
+  return { success: true, error: null }
 }
