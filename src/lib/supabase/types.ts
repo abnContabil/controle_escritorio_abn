@@ -15747,6 +15747,31 @@ export type Database = {
         Args: { p_company_id: string; p_conciliacao_id: string }
         Returns: Json
       }
+      abn_ensure_profile: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string | null
+          id: string
+          is_admin: boolean | null
+          logo_url: string | null
+          name: string | null
+          permissions: Json | null
+          phone: string | null
+          project_id: string | null
+          project_id2: string | null
+          role: string | null
+          status: string | null
+          theme_color: string | null
+          user_type: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'abn_profiles'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       abn_excluir_xml: { Args: { p_xml_id: string }; Returns: Json }
       abn_gerar_financeiro_xml: {
         Args: {
