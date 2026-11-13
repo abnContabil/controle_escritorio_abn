@@ -1,346 +1,195 @@
-import { useState, useMemo } from 'react'
-import { Plus } from 'lucide-react'
+// Central operacional de Obrigações Acessórias (PROMPT 28).
+// Dados 100% reais do Supabase (vw_abn_obligations_operational + vw_abn_companies_safe).
+// Nenhum dado fictício, nenhuma migration, nenhuma alteração de estrutura.
+import { useMemo } from 'react'
+import { CalendarX2, RefreshCw, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { useToast } from '@/hooks/use-toast'
-import {
-  useAbnObligations,
-  type AbnObligationOperational,
-  type AbnObligationInput,
-} from '@/hooks/use-abn-obligations'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAbnObligations } from '@/hooks/use-abn-obligations'
 import { useAbnCompanies } from '@/hooks/use-abn-companies'
-import { IndicatorCards } from '@/components/obrigacoes/IndicatorCards'
-import { FilterBar } from '@/components/obrigacoes/FilterBar'
-import { ObligationKanban } from '@/components/obrigacoes/ObligationKanban'
-import { KANBAN_COLUMNS } from '@/components/obrigacoes/kanban-constants'
-
-function competenciaToMMYYYY(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const parts = String(dateStr).split('-')
-  if (parts.length < 2) return ''
-  return `${parts[1]}/${parts[0]}`
-}
-
-function matchUrgency(o: AbnObligationOperational, filter: string): boolean {
-  if (!filter) return true
-  if (filter === '__proximos_7') {
-    const vals = ['vence_hoje', 'vence_em_3_dias', 'vence_em_7_dias']
-    const u = (o.urgency || '').toLowerCase()
-    if (u) return vals.includes(u)
-    const d = o.days_to_due
-    return d !== null && d >= 0 && d <= 7 && !o.is_overdue
-  }
-  const u = (o.urgency || '').toLowerCase()
-  if (u) return u === filter
-  if (filter === 'concluida') return o.workflow_status === 'Concluído'
-  if (filter === 'atrasada') return o.is_overdue
-  const d = o.days_to_due
-  if (filter === 'vence_hoje') return d === 0
-  if (filter === 'vence_em_3_dias') return d !== null && d > 0 && d <= 3
-  if (filter === 'vence_em_7_dias') return d !== null && d > 3 && d <= 7
-  if (filter === 'no_prazo') return d !== null && d > 7
-  return false
-}
+import { useResponsibleUsers } from '@/hooks/use-responsible-users'
+import { useObligationsView } from '@/hooks/use-obligations-view'
+import { ObligationsFilterBar } from '@/components/obrigacoes/ObligationsFilterBar'
+import { IndicatorCards } from '@/components/obrigacoes/IndicatorCardsView'
+import { ObligationsCalendar } from '@/components/obrigacoes/ObligationsCalendar'
+import { ObligationDetailPanel } from '@/components/obrigacoes/ObligationDetailPanel'
+import { BoardCards, BoardFocusBanner } from '@/components/obrigacoes/BoardCards'
+import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
 
 export default function Obrigacoes() {
-  const { toast } = useToast()
+  const { obligations, loading, error, updating, updateStatus, refetch } = useAbnObligations()
   const {
-    obligations,
-    indicators,
-    loading,
-    indicatorsLoading,
-    error,
-    saveObligation,
-    updateStatus,
-    refetch,
-  } = useAbnObligations()
-  const { companies } = useAbnCompanies()
+    companies,
+    loading: loadingCompanies,
+    error: errorCompanies,
+    refetch: refetchCompanies,
+  } = useAbnCompanies()
+  const { users: responsibles, loading: loadingResponsibles } = useResponsibleUsers()
 
-  const [filterCompetencia, setFilterCompetencia] = useState('')
-  const [filterCompany, setFilterCompany] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterUrgency, setFilterUrgency] = useState('')
-  const [activeIndicator, setActiveIndicator] = useState<string | null>(null)
-
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editing, setEditing] = useState<Partial<AbnObligationInput> | null>(null)
-
-  const companyNames = useMemo(() => {
-    const set = new Set<string>()
-    obligations.forEach((o) => {
-      if (o.company_name) set.add(o.company_name)
+  const companyRegimes = useMemo(() => {
+    const map = new Map<string, string>()
+    companies.forEach((c) => {
+      if (c.id && c.regime_tributario) map.set(c.id, c.regime_tributario)
     })
-    return Array.from(set).sort()
-  }, [obligations])
+    return map
+  }, [companies])
 
-  const workflowStatuses = useMemo(() => {
-    const set = new Set<string>([...KANBAN_COLUMNS, 'Cancelado'])
-    obligations.forEach((o) => {
-      if (o.workflow_status) set.add(o.workflow_status)
-    })
-    return Array.from(set)
-  }, [obligations])
+  const view = useObligationsView(obligations, companyRegimes)
 
-  const filtered = useMemo(() => {
-    return obligations.filter((o) => {
-      if (o.workflow_status === 'Cancelado' && filterStatus !== 'Cancelado') return false
-      if (filterCompetencia) {
-        if (competenciaToMMYYYY(o.competencia) !== filterCompetencia) return false
-      }
-      if (filterCompany && o.company_name !== filterCompany) return false
-      if (filterStatus && (o.workflow_status || '') !== filterStatus) return false
-      if (filterUrgency && !matchUrgency(o, filterUrgency)) return false
-      return true
-    })
-  }, [obligations, filterCompetencia, filterCompany, filterStatus, filterUrgency])
-
-  const handleIndicatorClick = (key: string) => {
-    if (activeIndicator === key) {
-      setActiveIndicator(null)
-      setFilterUrgency('')
-      setFilterStatus('')
-      return
-    }
-    setActiveIndicator(key)
-    switch (key) {
-      case 'atrasadas':
-        setFilterStatus('')
-        setFilterUrgency('atrasada')
-        break
-      case 'vencem_hoje':
-        setFilterStatus('')
-        setFilterUrgency('vence_hoje')
-        break
-      case 'proximos_7_dias':
-        setFilterStatus('')
-        setFilterUrgency('__proximos_7')
-        break
-      case 'aguardando_cliente':
-        setFilterUrgency('')
-        setFilterStatus('Aguardando Cliente')
-        break
-      case 'concluidas_no_mes':
-        setFilterUrgency('')
-        setFilterStatus('Concluído')
-        break
-    }
+  const handleSelect = (o: AbnObligationOperational) => view.openObligation(o)
+  const handleRefresh = () => {
+    refetch()
+    refetchCompanies()
   }
 
-  const handleClearFilters = () => {
-    setFilterCompetencia('')
-    setFilterCompany('')
-    setFilterStatus('')
-    setFilterUrgency('')
-    setActiveIndicator(null)
-  }
-
-  const handleStatusChange = async (id: string, status: string) => {
-    return await updateStatus(id, status)
-  }
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editing?.company_id || !editing?.name || !editing?.due_date) {
-      toast({
-        title: 'Atenção',
-        description: 'Preencha todos os campos obrigatórios',
-        variant: 'destructive',
-      })
-      return
-    }
-    const success = await saveObligation({
-      ...editing,
-      status: editing.status || 'A Fazer',
-      type: editing.type || 'Federal',
-    })
-    if (success) {
-      setIsModalOpen(false)
-      setEditing(null)
-    }
-  }
-
-  const openEdit = (o: AbnObligationOperational) => {
-    setEditing({
-      id: o.id,
-      company_id: o.company_id,
-      name: o.name,
-      due_date: o.due_date,
-      type: o.type,
-      status: o.status,
-    })
-    setIsModalOpen(true)
-  }
+  const hasError = Boolean(error) || Boolean(errorCompanies)
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5">
+      {/* Cabeçalho */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Obrigações Acessórias</h1>
-          <p className="text-muted-foreground mt-1">Acompanhamento de prazos e entregas.</p>
+          <h1 className="text-2xl font-bold text-[#101D2D]">Obrigações Acessórias</h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
+            Gestão automatizada das obrigações fiscais, contábeis e trabalhistas conforme o regime
+            tributário de cada empresa.
+          </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditing({ status: 'A Fazer', type: 'Federal' })
-            setIsModalOpen(true)
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" /> Nova Obrigação
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
+          <Button size="sm" onClick={() => view.setRulesOpen(true)}>
+            <Settings2 className="h-4 w-4 mr-2" />
+            Regras de Obrigações
+          </Button>
+        </div>
       </div>
 
-      <IndicatorCards
-        indicators={indicators}
-        loading={indicatorsLoading}
-        activeKey={activeIndicator}
-        onCardClick={handleIndicatorClick}
-      />
-
-      <FilterBar
-        competencia={filterCompetencia}
-        setCompetencia={setFilterCompetencia}
-        company={filterCompany}
-        setCompany={(v) => {
-          setFilterCompany(v)
-          setActiveIndicator(null)
-        }}
-        companies={companyNames}
-        workflowStatus={filterStatus}
-        setWorkflowStatus={(v) => {
-          setFilterStatus(v)
-          setActiveIndicator(null)
-        }}
-        workflowStatuses={workflowStatuses}
-        urgency={filterUrgency}
-        setUrgency={(v) => {
-          setFilterUrgency(v)
-          setActiveIndicator(null)
-        }}
-        onClear={handleClearFilters}
-      />
-
-      <Tabs defaultValue="kanban" className="flex-1 flex flex-col">
-        <TabsList>
-          <TabsTrigger value="kanban">Quadro Kanban</TabsTrigger>
-          <TabsTrigger value="lista">Lista</TabsTrigger>
-        </TabsList>
-        <TabsContent value="kanban" className="flex-1 mt-4">
-          <ObligationKanban
-            obligations={filtered}
-            loading={loading}
-            error={error}
-            onRetry={refetch}
-            onEdit={openEdit}
-            onStatusChange={handleStatusChange}
-          />
-        </TabsContent>
-        <TabsContent value="lista" className="mt-4">
-          <div className="p-8 text-center text-muted-foreground border rounded-lg">
-            Visualização em lista disponível na próxima atualização.
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing?.id ? 'Editar Obrigação' : 'Nova Obrigação'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <Select
-                value={editing?.company_id || ''}
-                onValueChange={(val) => setEditing({ ...editing, company_id: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.razao_social}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Nome da Obrigação</Label>
-              <Input
-                required
-                value={editing?.name || ''}
-                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                placeholder="Ex: DAS, SPED, DCTFWeb..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Vencimento</Label>
-                <Input
-                  required
-                  type="date"
-                  value={editing?.due_date || ''}
-                  onChange={(e) => setEditing({ ...editing, due_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select
-                  value={editing?.type || 'Federal'}
-                  onValueChange={(val) => setEditing({ ...editing, type: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Federal">Federal</SelectItem>
-                    <SelectItem value="Estadual">Estadual</SelectItem>
-                    <SelectItem value="Municipal">Municipal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={editing?.status || 'A Fazer'}
-                onValueChange={(val) => setEditing({ ...editing, status: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A Fazer">A Fazer</SelectItem>
-                  <SelectItem value="Em Processamento">Em Processamento</SelectItem>
-                  <SelectItem value="Em Conferência">Em Conferência</SelectItem>
-                  <SelectItem value="Aguardando Cliente">Aguardando Cliente</SelectItem>
-                  <SelectItem value="Pendente Pagamento">Pendente Pagamento</SelectItem>
-                  <SelectItem value="Concluído">Concluído</SelectItem>{' '}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="submit" className="w-full">
-                Salvar Obrigação
+      {/* Erro com Tentar novamente */}
+      {hasError && (
+        <Alert variant="destructive">
+          <AlertTitle>Não foi possível carregar os dados</AlertTitle>
+          <AlertDescription>
+            {error || errorCompanies}
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                Tentar novamente
               </Button>
-            </DialogFooter>
-          </form>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Indicadores */}
+      <IndicatorCards view={view} loading={loading} />
+
+      {/* Filtros */}
+      <ObligationsFilterBar
+        view={view}
+        companies={companies}
+        responsibles={responsibles}
+        loadingResponsibles={loadingResponsibles}
+      />
+
+      {/* Banner de foco de quadro */}
+      <BoardFocusBanner view={view} />
+
+      {/* Calendário operacional */}
+      <Card className="border-[#E1E7EF] shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-[#101D2D] flex items-center gap-2">
+            <CalendarX2 className="h-4 w-4 text-[#087F8C]" />
+            Calendário operacional
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Vencimentos reais das obrigações filtradas. Clique numa obrigação para abrir os
+            detalhes; clique num dia para ver todas as obrigações daquele dia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button variant="outline" size="sm" onClick={refetch}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : (
+            <ObligationsCalendar
+              obligations={view.filtered}
+              viewMode={view.viewMode}
+              onViewModeChange={view.setViewMode}
+              anchorDate={view.anchorDate}
+              onAnchorChange={view.setAnchorDate}
+              selectedId={view.selectedId}
+              onSelect={handleSelect}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quadros inferiores */}
+      <BoardCards view={view} loading={loading} onSelect={handleSelect} />
+
+      {/* Painel lateral de detalhes */}
+      <ObligationDetailPanel
+        obligation={view.selected}
+        open={view.panelOpen}
+        onOpenChange={view.setPanelOpen}
+        responsibles={responsibles}
+        onStatusChange={updateStatus}
+        onRefresh={refetch}
+      />
+
+      {/* Área administrativa: placeholder de regras (sem escrita no banco) */}
+      <Dialog open={view.rulesOpen} onOpenChange={view.setRulesOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#101D2D]">
+              <Settings2 className="h-4 w-4 text-[#087F8C]" />
+              Regras de Obrigações
+            </DialogTitle>
+            <DialogDescription>
+              Área administrativa — configuração de aplicabilidades, periodicidades e vencimentos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              Esta área é um <span className="font-medium text-[#172235]">placeholder</span>: as
+              regras fiscais (aplicabilidade por regime, periodicidade e data legal de vencimento)
+              residem no catálogo do schema <code className="text-xs">contabil_io</code> e só podem
+              ser alteradas com validação e autorização — não há edição pelo frontend.
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>Catálogo atual: 40 atividades — Fiscal (20), Contábil (7), Pessoal (13).</li>
+              <li>
+                Geração automática por regime: funções SQL{' '}
+                <code className="text-xs">abn_apply_default_obligation_settings</code> e{' '}
+                <code className="text-xs">abn_generate_company_obligations</code> (integração com o
+                catálogo ainda a validar no backend).
+              </li>
+              <li>
+                Obrigações condicionais (empregados, retenções, IE, município) exigem validação do
+                operador.
+              </li>
+            </ul>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
