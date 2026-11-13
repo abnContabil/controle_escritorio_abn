@@ -9,6 +9,11 @@
 
 export type Department = 'fiscal' | 'contabil' | 'pessoal' | 'outros'
 
+// Departamentos filtráveis (exclui o bucket "outros").
+export type DepartmentKey = Exclude<Department, 'outros'>
+
+export const DEPARTMENT_KEYS: DepartmentKey[] = ['fiscal', 'contabil', 'pessoal']
+
 export const DEPARTMENT_LABELS: Record<Department, string> = {
   fiscal: 'Fiscal',
   contabil: 'Contábil',

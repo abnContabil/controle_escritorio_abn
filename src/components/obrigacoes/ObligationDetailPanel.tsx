@@ -300,7 +300,7 @@ export function ObligationDetailPanel({
           <TabsContent value="detalhes" className="flex-1 overflow-y-auto px-5 py-3 mt-0">
             <div className="grid grid-cols-2 gap-x-4">
               <DetailRow label="Empresa">{obligation.company_name || '—'}</DetailRow>
-              <DetailRow label="CNPJ">{obligation.cnpj_pretty || 'não disponível'}</DetailRow>
+              <DetailRow label="CNPJ">{obligation.cnpj || 'não disponível'}</DetailRow>
               <DetailRow label="Regime tributário">
                 {obligation.regime_tributario || 'Não informado'}
               </DetailRow>

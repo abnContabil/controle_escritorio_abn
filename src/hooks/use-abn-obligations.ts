@@ -32,6 +32,7 @@ export type AbnObligationOperational = {
   completed_at: string | null
   completed_by: string | null
   notes: string | null
+  cnpj: string | null
   created_at: string
   updated_at: string
 }
@@ -64,7 +65,7 @@ export type AbnObligationInput = {
 }
 
 const OBLIGATION_FIELDS =
-  'id, company_id, name, type, status, workflow_status, due_date, competencia, responsible_user_id, responsible_name, responsible_email, priority, guide_status, progress_percentage, kanban_position, company_name, company_active, regime_tributario, uf, days_to_due, is_overdue, urgency, checklist_total, checklist_completed, calculated_progress_percentage, completed_at, completed_by, notes, created_at, updated_at'
+  'id, company_id, name, type, status, workflow_status, due_date, competencia, responsible_user_id, responsible_name, responsible_email, priority, guide_status, progress_percentage, kanban_position, company_name, company_active, regime_tributario, uf, days_to_due, is_overdue, urgency, checklist_total, checklist_completed, calculated_progress_percentage, completed_at, completed_by, notes, cnpj, created_at, updated_at'
 
 export function useAbnObligations() {
   const [obligations, setObligations] = useState<AbnObligationOperational[]>([])
