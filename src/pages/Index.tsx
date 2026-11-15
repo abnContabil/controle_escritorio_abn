@@ -197,7 +197,7 @@ export default function Index() {
                     <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                     <Tooltip
                       cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                      content={<ChartTooltipContent />}
+                      content={(<ChartTooltipContent />) as never}
                     />
                     <Bar
                       dataKey="value"
@@ -240,7 +240,7 @@ export default function Index() {
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-                      <Tooltip content={<ChartTooltipContent />} />
+                      <Tooltip content={(<ChartTooltipContent />) as never} />
                       <Legend
                         verticalAlign="bottom"
                         height={36}

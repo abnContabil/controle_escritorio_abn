@@ -12,7 +12,7 @@ import {
   type DepartmentKey,
 } from '@/components/obrigacoes/departments'
 
-export type ViewMode = 'mes' | 'semana' | 'lista'
+export type ViewMode = 'lista' | 'kanban' | 'mes' | 'semana'
 export type BoardKey = 'hoje' | 'proximos7' | 'atrasadas'
 
 export interface ObligationFilters {
@@ -42,16 +42,28 @@ const REGIMES = [
   'Entidades imunes/isentas',
 ]
 
-function startOfToday(): Date {
+export function startOfToday(): Date {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   return d
 }
 
-function parseDue(due: string): Date | null {
+export function parseDue(due: string): Date | null {
   if (!due) return null
   const d = new Date(`${due}T12:00:00`)
   return Number.isNaN(d.getTime()) ? null : d
+}
+
+export function isDone(o: AbnObligationOperational): boolean {
+  return o.workflow_status === 'Concluído' || o.status === 'Concluído'
+}
+
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 export function useObligationsView(
@@ -59,7 +71,7 @@ export function useObligationsView(
   companyRegimes: Map<string, string>,
 ) {
   const [filters, setFilters] = useState<ObligationFilters>(EMPTY_FILTERS)
-  const [viewMode, setViewMode] = useState<ViewMode>('mes')
+  const [viewMode, setViewMode] = useState<ViewMode>('lista')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -125,7 +137,7 @@ export function useObligationsView(
       if (boardFocus) {
         const due = parseDue(o.due_date)
         if (!due) return false
-        const done = o.workflow_status === 'Concluído' || o.status === 'Concluído'
+        const done = isDone(o)
         if (boardFocus === 'atrasadas') {
           if (done || due >= today) return false
         } else if (boardFocus === 'hoje') {
@@ -155,47 +167,38 @@ export function useObligationsView(
   )
 
   // Indicadores: calculados com os filtros atuais (sem considerar boardFocus,
-  // que é navegação de quadro, não filtro).
+  // que é navegação de quadro, não filtro). Os cinco números pedidos:
+  // total do período, concluídas, pendentes, atrasadas e próximas do vencimento.
   const indicators = useMemo(() => {
     const today = startOfToday()
     const in7 = new Date(today)
     in7.setDate(today.getDate() + 7)
-    let concluidas = 0
-    let aguardando = 0
-    let vencem7 = 0
-    let atrasadas = 0
     let total = 0
+    let concluidas = 0
+    let pendentes = 0
+    let atrasadas = 0
+    let proximas = 0
     filteredAll.forEach((o) => {
       const due = parseDue(o.due_date)
-      const done = o.workflow_status === 'Concluído' || o.status === 'Concluído'
-      const mesCompetencia = o.competencia?.slice(0, 7)
+      const done = isDone(o)
       total += 1
       if (done) {
-        // "Concluídas no mês": concluídas com competência/vencimento no mês corrente
-        const mesAtual = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-        if (
-          (o.completed_at && o.completed_at.slice(0, 7) === mesAtual) ||
-          (due &&
-            due.getFullYear() === today.getFullYear() &&
-            due.getMonth() === today.getMonth()) ||
-          mesCompetencia === mesAtual
-        ) {
-          concluidas += 1
-        }
-      } else if (o.workflow_status === 'Aguardando Cliente') {
-        aguardando += 1
+        concluidas += 1
+        return
       }
-      if (due && !done) {
+      if (o.workflow_status === 'Cancelado') return
+      pendentes += 1
+      if (due) {
         if (due < today) atrasadas += 1
-        else if (due <= in7) vencem7 += 1
+        else if (due <= in7) proximas += 1
       }
     })
     return {
-      concluidasNoMes: concluidas,
-      aguardandoCliente: aguardando,
-      vencem7Dias: vencem7,
-      atrasadas,
       total,
+      concluidas,
+      pendentes,
+      atrasadas,
+      proximas,
     }
   }, [filteredAll])
 
@@ -210,8 +213,7 @@ export function useObligationsView(
     filteredAll.forEach((o) => {
       const due = parseDue(o.due_date)
       if (!due) return
-      const done = o.workflow_status === 'Concluído' || o.status === 'Concluído'
-      if (done) return
+      if (isDone(o)) return
       if (isSameDay(due, today)) hoje.push(o)
       if (due >= today && due <= in7) proximos.push(o)
       if (due < today) atrasadas.push(o)
@@ -261,14 +263,6 @@ export function useObligationsView(
     setRulesOpen,
     DEPARTMENT_KEYS,
   }
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
 }
 
 export type ObligationsView = ReturnType<typeof useObligationsView>

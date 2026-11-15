@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabase/client'
+import { contabilIoDb } from '@/lib/supabase/contabil-io-client'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
 import type { ResponsibleUser } from '@/hooks/use-responsible-users'
 
@@ -51,10 +51,9 @@ export function ObligationExecutionTab({
   const { toast } = useToast()
 
   const handleComplete = async () => {
-    const { data: userData } = await supabase.auth.getUser()
+    const { data: userData } = await contabilIoDb.auth.getUser()
     const userId = userData.user?.id
-    const { error: err } = await supabase
-      .schema('contabil_io')
+    const { error: err } = await contabilIoDb
       .from('abn_obligations')
       .update({
         workflow_status: 'Concluído',
@@ -80,10 +79,9 @@ export function ObligationExecutionTab({
 
   const changeResponsible = async (id: string) => {
     if (!id) return
-    const { data: userData } = await supabase.auth.getUser()
+    const { data: userData } = await contabilIoDb.auth.getUser()
     const userId = userData.user?.id
-    const { error: err } = await supabase
-      .schema('contabil_io')
+    const { error: err } = await contabilIoDb
       .from('abn_obligations')
       .update({
         responsible_user_id: id,

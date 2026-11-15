@@ -1,6 +1,7 @@
-// Cartões de indicadores superiores — números calculados em
-// use-obligations-view.ts a partir dos dados reais do Supabase.
-import { AlertCircle, CalendarClock, CheckCircle2, Clock, ListChecks } from 'lucide-react'
+// Cartões de indicadores da central — os 5 números pedidos, calculados em
+// use-obligations-view.ts a partir dos dados reais do Supabase (sem mock).
+// Todos reagem em tempo real aos 6 filtros combináveis.
+import { AlertCircle, CalendarClock, CheckCircle2, ListChecks, Timer } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { ObligationsView } from '@/hooks/use-obligations-view'
@@ -45,22 +46,22 @@ export function IndicatorCards({ view, loading }: IndicatorCardsProps) {
   return (
     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
       <IndicatorCard
+        icon={<ListChecks className="h-4 w-4 text-white" />}
+        label="Total do período"
+        value={loading ? '…' : indicators.total}
+        accent="bg-[#101D2D]"
+      />
+      <IndicatorCard
         icon={<CheckCircle2 className="h-4 w-4 text-white" />}
-        label="Concluídas no mês"
-        value={loading ? '…' : indicators.concluidasNoMes}
+        label="Concluídas"
+        value={loading ? '…' : indicators.concluidas}
         accent="bg-[#087F8C]"
       />
       <IndicatorCard
-        icon={<Clock className="h-4 w-4 text-white" />}
-        label="Aguardando cliente"
-        value={loading ? '…' : indicators.aguardandoCliente}
-        accent="bg-[#101D2D]"
-      />
-      <IndicatorCard
-        icon={<CalendarClock className="h-4 w-4 text-white" />}
-        label="Vencem nos próximos 7 dias"
-        value={loading ? '…' : indicators.vencem7Dias}
-        accent="bg-[#101D2D]"
+        icon={<Timer className="h-4 w-4 text-white" />}
+        label="Pendentes"
+        value={loading ? '…' : indicators.pendentes}
+        accent="bg-[#172235]"
       />
       <IndicatorCard
         icon={<AlertCircle className="h-4 w-4 text-white" />}
@@ -69,10 +70,10 @@ export function IndicatorCards({ view, loading }: IndicatorCardsProps) {
         accent="bg-[#B42318]"
       />
       <IndicatorCard
-        icon={<ListChecks className="h-4 w-4 text-white" />}
-        label="Total de obrigações do período"
-        value={loading ? '…' : indicators.total}
-        accent="bg-[#087F8C]"
+        icon={<CalendarClock className="h-4 w-4 text-white" />}
+        label="Próximas do vencimento"
+        value={loading ? '…' : indicators.proximas}
+        accent="bg-[#F4A261]"
       />
     </div>
   )

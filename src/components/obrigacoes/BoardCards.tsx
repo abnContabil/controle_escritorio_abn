@@ -1,154 +1,140 @@
-// Quadros inferiores: Vencem hoje, Próximos 7 dias e Atrasadas.
-// Dados reais do conjunto filtrado; clicar num quadro foca o calendário
-// naquele grupo e clicar num item abre o painel de detalhes.
+// Quadros inferiores da central: Vencem hoje, Próximos 7 dias e Atrasadas.
+// Cada quadro lista obrigações reais (vw_abn_obligations_operational) e, ao
+// clicar, restringe a listagem/calendário ao grupo do quadro (boardFocus) e
+// abre o painel de detalhes da obrigação selecionada.
 import { AlertTriangle, CalendarClock, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
-import type { BoardKey, ObligationsView } from '@/hooks/use-obligations-view'
-import { DEPARTMENT_DOT_CLASSES, getDepartment, DEPARTMENT_LABELS } from './departments'
-import { formatDateBR } from './detail-panel-utils'
+import type { ObligationsView, BoardKey } from '@/hooks/use-obligations-view'
+import { DEPARTMENT_DOT_CLASSES, DEPARTMENT_LABELS, getDepartment } from './departments'
 
 export interface BoardCardsProps {
   view: ObligationsView
   loading: boolean
-  onSelect: (o: AbnObligationOperational) => void
+  error: string | null
+  onRetry: () => void
 }
 
-const BOARD_META: Record<
-  BoardKey,
-  { title: string; icon: React.ReactNode; accent: string; empty: string }
-> = {
-  hoje: {
-    title: 'Vencem hoje',
-    icon: <CalendarClock className="h-4 w-4" />,
-    accent: 'text-[#087F8C] bg-[#087F8C]/10',
-    empty: 'Nenhuma obrigação vence hoje.',
-  },
-  proximos7: {
-    title: 'Próximos 7 dias',
-    icon: <Clock className="h-4 w-4" />,
-    accent: 'text-[#101D2D] bg-[#101D2D]/10',
-    empty: 'Nenhuma obrigação vence nos próximos 7 dias.',
-  },
-  atrasadas: {
-    title: 'Atrasadas',
-    icon: <AlertTriangle className="h-4 w-4" />,
-    accent: 'text-[#B42318] bg-[#B42318]/10',
-    empty: 'Nenhuma obrigação atrasada.',
-  },
+const BOARD_TITLES: Record<BoardKey, string> = {
+  hoje: 'Vencem hoje',
+  proximos7: 'Próximos 7 dias',
+  atrasadas: 'Atrasadas',
+}
+
+const BOARD_ICONS: Record<BoardKey, React.ReactNode> = {
+  hoje: <Clock className="h-4 w-4 text-white" />,
+  proximos7: <CalendarClock className="h-4 w-4 text-white" />,
+  atrasadas: <AlertTriangle className="h-4 w-4 text-white" />,
+}
+
+const BOARD_ACCENTS: Record<BoardKey, string> = {
+  hoje: 'bg-[#087F8C]',
+  proximos7: 'bg-[#101D2D]',
+  atrasadas: 'bg-[#B42318]',
 }
 
 function BoardCard({
   boardKey,
   items,
-  focused,
+  view,
   loading,
-  onSelect,
-  onFocus,
 }: {
   boardKey: BoardKey
   items: AbnObligationOperational[]
-  focused: boolean
+  view: ObligationsView
   loading: boolean
-  onSelect: (o: AbnObligationOperational) => void
-  onFocus: () => void
 }) {
-  const meta = BOARD_META[boardKey]
+  const isFocused = view.boardFocus === boardKey
   return (
     <div
       className={cn(
-        'rounded-lg border bg-white flex flex-col shadow-sm',
-        focused ? 'border-[#087F8C]' : 'border-[#E1E7EF]',
+        'rounded-xl border bg-white shadow-sm overflow-hidden flex flex-col',
+        isFocused ? 'border-[#087F8C] ring-1 ring-[#087F8C]/40' : 'border-[#E1E7EF]',
       )}
     >
-      <button
-        type="button"
-        onClick={onFocus}
-        className="flex items-center justify-between px-4 py-3 text-left hover:bg-[#F4F7FA] transition-colors"
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold text-[#101D2D]">
-          <span className={cn('rounded-md p-1.5', meta.accent)}>{meta.icon}</span>
-          {meta.title}
-        </span>
-        {loading ? (
-          <Skeleton className="h-6 w-8" />
-        ) : (
-          <span className="text-lg font-bold text-[#101D2D]">{items.length}</span>
-        )}
-      </button>
-      <div className="border-t border-[#E1E7EF] divide-y divide-[#E1E7EF] max-h-56 overflow-y-auto">
-        {loading ? (
-          <div className="p-3 space-y-2">
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-full" />
+      <div className="flex items-center justify-between gap-2 p-3 border-b border-[#E1E7EF]/70">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={cn('rounded-md p-1.5 shrink-0', BOARD_ACCENTS[boardKey])}>
+            {BOARD_ICONS[boardKey]}
           </div>
-        ) : items.length === 0 ? (
-          <p className="px-4 py-4 text-xs text-muted-foreground">{meta.empty}</p>
+          <span className="text-sm font-semibold text-[#101D2D] truncate">
+            {BOARD_TITLES[boardKey]}
+          </span>
+        </div>
+        {loading ? (
+          <Skeleton className="h-5 w-8" />
         ) : (
-          items.slice(0, 20).map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => onSelect(o)}
-              className="w-full text-left px-4 py-2 hover:bg-[#F4F7FA] transition-colors"
-            >
-              <p className="text-sm font-medium text-[#172235] truncate">{o.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {o.company_name || 'Sem empresa'} · venc. {formatDateBR(o.due_date)} ·{' '}
-                <span
-                  className={cn(
-                    'inline-block h-1.5 w-1.5 rounded-full align-middle',
-                    DEPARTMENT_DOT_CLASSES[getDepartment(o.name)],
-                  )}
-                />{' '}
-                {DEPARTMENT_LABELS[getDepartment(o.name)]}
-              </p>
-            </button>
-          ))
-        )}
-        {items.length > 20 && (
-          <p className="px-4 py-2 text-[11px] text-muted-foreground">
-            +{items.length - 20} no quadro — clique no título para filtrar o calendário.
-          </p>
+          <span
+            className={cn(
+              'text-sm font-bold rounded-full px-2 py-0.5',
+              boardKey === 'atrasadas' ? 'bg-red-100 text-red-700' : 'bg-[#F4F7FA] text-[#101D2D]',
+            )}
+          >
+            {items.length}
+          </span>
         )}
       </div>
-    </div>
-  )
-}
-
-export function BoardCards({ view, loading, onSelect }: BoardCardsProps) {
-  const { boards, boardFocus, focusBoard } = view
-  return (
-    <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-      {(Object.keys(BOARD_META) as BoardKey[]).map((key) => (
-        <BoardCard
-          key={key}
-          boardKey={key}
-          items={boards[key]}
-          focused={boardFocus === key}
-          loading={loading}
-          onSelect={onSelect}
-          onFocus={() => focusBoard(boardFocus === key ? null : key)}
-        />
-      ))}
+      <div className="p-2 space-y-1 overflow-y-auto max-h-52 flex-1">
+        {loading ? (
+          <div className="space-y-2 p-1">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : items.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Nenhuma obrigação neste quadro.
+          </p>
+        ) : (
+          items.map((o) => {
+            const dep = getDepartment(o.name)
+            return (
+              <button
+                key={o.id}
+                type="button"
+                className="w-full text-left rounded-lg border border-transparent hover:border-[#087F8C]/40 hover:bg-[#F4F7FA] px-2.5 py-2 transition-colors"
+                onClick={() => view.openObligation(o)}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={cn('h-2 w-2 rounded-full shrink-0', DEPARTMENT_DOT_CLASSES[dep])}
+                  />
+                  <span className="text-xs font-medium truncate">{o.name}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                  {o.company_name || 'Sem empresa'}
+                  {o.due_date
+                    ? ` · ${o.due_date.split('T')[0].split('-').reverse().join('/')}`
+                    : ''}
+                  {` · ${DEPARTMENT_LABELS[dep]}`}
+                </p>
+              </button>
+            )
+          })
+        )}
+      </div>
+      <div className="p-2 border-t border-[#E1E7EF]/70">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs"
+          onClick={() => view.focusBoard(isFocused ? null : boardKey)}
+        >
+          {isFocused ? 'Remover foco do quadro' : 'Ver na listagem'}
+        </Button>
+      </div>
     </div>
   )
 }
 
 export function BoardFocusBanner({ view }: { view: ObligationsView }) {
   if (!view.boardFocus) return null
-  const label =
-    view.boardFocus === 'hoje'
-      ? 'Vencem hoje'
-      : view.boardFocus === 'proximos7'
-        ? 'Próximos 7 dias'
-        : 'Atrasadas'
   return (
-    <div className="flex items-center justify-between rounded-md border border-[#087F8C]/40 bg-[#087F8C]/10 px-3 py-2">
-      <p className="text-xs text-[#101D2D]">
-        Exibindo somente: <span className="font-semibold">{label}</span>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-[#087F8C]/40 bg-[#087F8C]/5 px-3 py-2">
+      <p className="text-xs text-[#0A5C66]">
+        Listagem filtrada pelo quadro{' '}
+        <span className="font-semibold">{BOARD_TITLES[view.boardFocus]}</span>.
       </p>
       <Button
         variant="ghost"
@@ -158,6 +144,27 @@ export function BoardFocusBanner({ view }: { view: ObligationsView }) {
       >
         Remover foco
       </Button>
+    </div>
+  )
+}
+
+export function BoardCards({ view, loading, error, onRetry }: BoardCardsProps) {
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col items-center gap-2">
+        <AlertTriangle className="h-5 w-5 text-destructive" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button size="sm" variant="outline" onClick={onRetry}>
+          Tentar novamente
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+      <BoardCard boardKey="hoje" items={view.boards.hoje} view={view} loading={loading} />
+      <BoardCard boardKey="proximos7" items={view.boards.proximos} view={view} loading={loading} />
+      <BoardCard boardKey="atrasadas" items={view.boards.atrasadas} view={view} loading={loading} />
     </div>
   )
 }

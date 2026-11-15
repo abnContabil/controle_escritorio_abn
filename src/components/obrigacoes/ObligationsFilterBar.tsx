@@ -1,8 +1,10 @@
-// Barra de filtros da central de Obrigações Acessórias.
-// Seis filtros que funcionam em conjunto + botão para limpar todos.
-// Regime tributário deriva do cadastro da empresa (dados reais).
-import { Filter, RotateCcw } from 'lucide-react'
+// Barra de filtros da central: os 6 filtros combináveis pedidos —
+// Empresa, Departamento, Regime tributário, Competência, Situação e
+// Responsável — além do botão "Limpar filtros". Todos atualizam indicadores,
+// lista, kanban e calendário ao mesmo tempo (estado único em useObligationsView).
+import { Filter, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -10,157 +12,167 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import type { AbnCompany } from '@/hooks/use-abn-companies'
-import type { ResponsibleUser } from '@/hooks/use-responsible-users'
-import { DEPARTMENT_KEYS, DEPARTMENT_LABELS } from './departments'
+import { useAbnCompanies } from '@/hooks/use-abn-companies'
+import { useResponsibleUsers } from '@/hooks/use-responsible-users'
 import type { ObligationsView } from '@/hooks/use-obligations-view'
+import { DEPARTMENT_KEYS, DEPARTMENT_LABELS, type DepartmentKey } from './departments'
 
 export interface ObligationsFilterBarProps {
   view: ObligationsView
-  companies: AbnCompany[]
-  responsibles: ResponsibleUser[]
-  loadingResponsibles: boolean
 }
 
-const ALL = '__todos__'
+const SELECT_TRIGGER = 'h-9 bg-white text-xs w-full'
 
-function toAll(v: string): string {
-  return v === ALL ? '' : v
-}
+export function ObligationsFilterBar({ view }: ObligationsFilterBarProps) {
+  const { companies, loading: companiesLoading } = useAbnCompanies()
+  const { users, loading: usersLoading } = useResponsibleUsers(undefined)
 
-function FilterSelect({
-  label,
-  value,
-  allLabel,
-  options,
-  renderOption,
-  onChange,
-}: {
-  label: string
-  value: string
-  allLabel: string
-  options: string[]
-  renderOption?: (v: string) => string
-  onChange: (v: string) => void
-}) {
   return (
-    <div className="min-w-0">
-      <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-        {label}
-      </label>
-      <Select value={value || ALL} onValueChange={(v) => onChange(toAll(v))}>
-        <SelectTrigger className="h-9 text-xs bg-white">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>{allLabel}</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {renderOption ? renderOption(o) : o}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  )
-}
-
-export function ObligationsFilterBar({
-  view,
-  companies,
-  responsibles,
-  loadingResponsibles,
-}: ObligationsFilterBarProps) {
-  return (
-    <div className="rounded-lg border border-[#E1E7EF] bg-white p-3 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 text-[#101D2D]">
-          <Filter className="h-4 w-4" />
-          <span className="text-sm font-semibold">Filtros</span>
+    <div className="rounded-xl border border-[#E1E7EF] bg-white p-3 shadow-sm space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-[#101D2D]">
+          <Filter className="h-4 w-4 text-[#087F8C]" />
+          Filtros
+          {view.hasActiveFilters && (
+            <span className="text-[11px] font-normal text-muted-foreground">
+              (combináveis entre si)
+            </span>
+          )}
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs text-[#087F8C] hover:text-[#087F8C] hover:bg-[#087F8C]/10"
+          className="h-8 text-xs"
           onClick={view.clearFilters}
           disabled={!view.hasActiveFilters}
         >
-          <RotateCcw className="h-3.5 w-3.5 mr-1" />
-          Limpar todos os filtros
+          <X className="h-3.5 w-3.5 mr-1" />
+          Limpar filtros
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
-        <FilterSelect
-          label="Empresa"
-          value={view.filters.empresaId}
-          allLabel="Todas as empresas"
-          options={companies.map((c) => c.id)}
-          renderOption={(id) => {
-            const c = companies.find((x) => x.id === id)
-            return c ? c.razao_social || c.cnpj || id : id
-          }}
-          onChange={(v) => view.setFilter('empresaId', v)}
-        />
-        <FilterSelect
-          label="Regime tributário"
-          value={view.filters.regime}
-          allLabel="Todos os regimes"
-          options={view.regimeOptions}
-          onChange={(v) => view.setFilter('regime', v)}
-        />
-        <FilterSelect
-          label="Competência"
-          value={view.filters.competencia}
-          allLabel="Todas as competências"
-          options={view.competencias}
-          renderOption={(c) => c.split('-').reverse().join('/')}
-          onChange={(v) => view.setFilter('competencia', v)}
-        />
-        <FilterSelect
-          label="Departamento"
-          value={view.filters.departamento}
-          allLabel="Todos os departamentos"
-          options={[...DEPARTMENT_KEYS]}
-          renderOption={(k) => DEPARTMENT_LABELS[k as keyof typeof DEPARTMENT_LABELS]}
-          onChange={(v) =>
-            view.setFilter('departamento', v as ObligationsView['filters']['departamento'])
-          }
-        />
-        {loadingResponsibles ? (
-          <div className="min-w-0">
-            <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-              Responsável
-            </label>
-            <Skeleton className="h-9 w-full" />
-          </div>
+
+      <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        {/* Empresa */}
+        {companiesLoading ? (
+          <Skeleton className="h-9 w-full" />
         ) : (
-          <FilterSelect
-            label="Responsável"
-            value={view.filters.responsavelId}
-            allLabel="Todos os responsáveis"
-            options={view.responsavelOptions.map((r) => r.id)}
-            renderOption={(id) => {
-              const r = view.responsavelOptions.find((x) => x.id === id)
-              return r ? r.name : id
-            }}
-            onChange={(v) => view.setFilter('responsavelId', v)}
-          />
+          <Select
+            value={view.filters.empresaId || 'ALL'}
+            onValueChange={(v) => view.setFilter('empresaId', v === 'ALL' ? '' : v)}
+          >
+            <SelectTrigger className={SELECT_TRIGGER}>
+              <SelectValue placeholder="Empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todas as empresas</SelectItem>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.razao_social}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
-        <FilterSelect
-          label="Situação"
-          value={view.filters.situacao}
-          allLabel="Todas as situações"
-          options={view.situacaoOptions}
-          onChange={(v) => view.setFilter('situacao', v)}
-        />
+
+        {/* Departamento */}
+        <Select
+          value={view.filters.departamento || 'ALL'}
+          onValueChange={(v) =>
+            view.setFilter('departamento', (v === 'ALL' ? '' : v) as DepartmentKey | '')
+          }
+        >
+          <SelectTrigger className={SELECT_TRIGGER}>
+            <SelectValue placeholder="Departamento" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todos os departamentos</SelectItem>
+            {DEPARTMENT_KEYS.map((k) => (
+              <SelectItem key={k} value={k}>
+                {DEPARTMENT_LABELS[k]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Regime tributário */}
+        <Select
+          value={view.filters.regime || 'ALL'}
+          onValueChange={(v) => view.setFilter('regime', v === 'ALL' ? '' : v)}
+        >
+          <SelectTrigger className={SELECT_TRIGGER}>
+            <SelectValue placeholder="Regime" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todos os regimes</SelectItem>
+            {view.regimeOptions.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Competência */}
+        <Select
+          value={view.filters.competencia || 'ALL'}
+          onValueChange={(v) => view.setFilter('competencia', v === 'ALL' ? '' : v)}
+        >
+          <SelectTrigger className={SELECT_TRIGGER}>
+            <SelectValue placeholder="Competência" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todas as competências</SelectItem>
+            {view.competencias.map((c) => {
+              const [y, m] = c.split('-')
+              return (
+                <SelectItem key={c} value={c}>
+                  {m}/{y}
+                </SelectItem>
+              )
+            })}
+          </SelectContent>
+        </Select>
+
+        {/* Situação */}
+        <Select
+          value={view.filters.situacao || 'ALL'}
+          onValueChange={(v) => view.setFilter('situacao', v === 'ALL' ? '' : v)}
+        >
+          <SelectTrigger className={SELECT_TRIGGER}>
+            <SelectValue placeholder="Situação" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todas as situações</SelectItem>
+            {view.situacaoOptions.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Responsável */}
+        {usersLoading ? (
+          <Skeleton className="h-9 w-full" />
+        ) : (
+          <Select
+            value={view.filters.responsavelId || 'ALL'}
+            onValueChange={(v) => view.setFilter('responsavelId', v === 'ALL' ? '' : v)}
+          >
+            <SelectTrigger className={SELECT_TRIGGER}>
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos os responsáveis</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
-      {view.filters.competencia === '' && (
-        <p className="text-[11px] text-muted-foreground mt-2">
-          Sem competência selecionada, o calendário e os indicadores consideram todas as
-          competências carregadas para o usuário.
-        </p>
-      )}
     </div>
   )
 }

@@ -20,10 +20,12 @@ export type AbnCompany = {
 export function useAbnCompanies() {
   const [companies, setCompanies] = useState<AbnCompany[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true)
+    setError(null)
     const { data, error } = await contabilIoDb
       .from('vw_abn_companies_safe')
       .select('*')
@@ -31,16 +33,13 @@ export function useAbnCompanies() {
 
     if (error) {
       console.error('Erro ao buscar empresas:', error)
-      toast({
-        title: 'Erro ao buscar empresas',
-        description: 'Não foi possível carregar a lista de empresas. Tente novamente.',
-        variant: 'destructive',
-      })
+      setError('Não foi possível carregar a lista de empresas. Tente novamente.')
+      setCompanies([])
     } else {
       setCompanies(data || [])
     }
     setLoading(false)
-  }, [toast])
+  }, [])
 
   useEffect(() => {
     fetchCompanies()
@@ -142,5 +141,5 @@ export function useAbnCompanies() {
     return true
   }
 
-  return { companies, loading, saveCompany, toggleCompanyStatus, refetch: fetchCompanies }
+  return { companies, loading, error, saveCompany, toggleCompanyStatus, refetch: fetchCompanies }
 }

@@ -1,10 +1,10 @@
-// Central operacional de Obrigações Acessórias (PROMPT 28).
+// Central de Obrigações Acessórias (PROMPT 28).
 // Dados 100% reais do Supabase (vw_abn_obligations_operational + vw_abn_companies_safe).
 // Nenhum dado fictício, nenhuma migration, nenhuma alteração de estrutura.
 import { useMemo } from 'react'
-import { CalendarX2, RefreshCw, Settings2 } from 'lucide-react'
+import { RefreshCw, Settings2, KanbanSquare, Table2, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { useAbnObligations } from '@/hooks/use-abn-obligations'
 import { useAbnCompanies } from '@/hooks/use-abn-companies'
 import { useResponsibleUsers } from '@/hooks/use-responsible-users'
@@ -22,18 +23,16 @@ import { ObligationsFilterBar } from '@/components/obrigacoes/ObligationsFilterB
 import { IndicatorCards } from '@/components/obrigacoes/IndicatorCardsView'
 import { ObligationsCalendar } from '@/components/obrigacoes/ObligationsCalendar'
 import { ObligationDetailPanel } from '@/components/obrigacoes/ObligationDetailPanel'
+import { ObligationList } from '@/components/obrigacoes/ObligationList'
+import { ObligationKanban } from '@/components/obrigacoes/ObligationKanban'
 import { BoardCards, BoardFocusBanner } from '@/components/obrigacoes/BoardCards'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
+import type { ViewMode } from '@/hooks/use-obligations-view'
 
 export default function Obrigacoes() {
-  const { obligations, loading, error, updating, updateStatus, refetch } = useAbnObligations()
-  const {
-    companies,
-    loading: loadingCompanies,
-    error: errorCompanies,
-    refetch: refetchCompanies,
-  } = useAbnCompanies()
-  const { users: responsibles, loading: loadingResponsibles } = useResponsibleUsers()
+  const { obligations, loading, error, updateStatus, refetch } = useAbnObligations()
+  const { companies, error: errorCompanies, refetch: refetchCompanies } = useAbnCompanies()
+  const { users: responsibles } = useResponsibleUsers()
 
   const companyRegimes = useMemo(() => {
     const map = new Map<string, string>()
@@ -53,15 +52,69 @@ export default function Obrigacoes() {
 
   const hasError = Boolean(error) || Boolean(errorCompanies)
 
+  const VIEW_TABS: { key: ViewMode; label: string; icon: React.ReactNode }[] = [
+    { key: 'lista', label: 'Lista', icon: <Table2 className="h-3.5 w-3.5" /> },
+    { key: 'kanban', label: 'Kanban', icon: <KanbanSquare className="h-3.5 w-3.5" /> },
+    { key: 'mes', label: 'Calendário', icon: <CalendarDays className="h-3.5 w-3.5" /> },
+  ]
+
+  const renderMainView = () => {
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-sm text-destructive mb-4">{error}</p>
+          <Button variant="outline" onClick={refetch}>
+            Tentar novamente
+          </Button>
+        </div>
+      )
+    }
+    if (loading) {
+      return (
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      )
+    }
+    switch (view.viewMode) {
+      case 'kanban':
+        return (
+          <ObligationKanban
+            obligations={view.filtered}
+            loading={loading}
+            error={error}
+            onRetry={refetch}
+            onEdit={handleSelect}
+            onStatusChange={updateStatus}
+          />
+        )
+      case 'mes':
+      case 'semana':
+        return <ObligationsCalendar view={view} loading={loading} error={error} onRetry={refetch} />
+      default:
+        return (
+          <ObligationList
+            obligations={view.filtered}
+            loading={loading}
+            error={error}
+            onRetry={refetch}
+            onEdit={handleSelect}
+            onStatusChange={updateStatus}
+          />
+        )
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Cabeçalho */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#101D2D]">Obrigações Acessórias</h1>
+          <h1 className="text-2xl font-bold text-[#101D2D]">Central de Obrigações Acessórias</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
-            Gestão automatizada das obrigações fiscais, contábeis e trabalhistas conforme o regime
-            tributário de cada empresa.
+            Gerencie prazos, responsabilidades e entregas fiscais, contábeis e trabalhistas em um
+            único lugar.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -95,57 +148,35 @@ export default function Obrigacoes() {
       <IndicatorCards view={view} loading={loading} />
 
       {/* Filtros */}
-      <ObligationsFilterBar
-        view={view}
-        companies={companies}
-        responsibles={responsibles}
-        loadingResponsibles={loadingResponsibles}
-      />
+      <ObligationsFilterBar view={view} />
 
       {/* Banner de foco de quadro */}
       <BoardFocusBanner view={view} />
 
-      {/* Calendário operacional */}
-      <Card className="border-[#E1E7EF] shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base text-[#101D2D] flex items-center gap-2">
-            <CalendarX2 className="h-4 w-4 text-[#087F8C]" />
-            Calendário operacional
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Vencimentos reais das obrigações filtradas. Clique numa obrigação para abrir os
-            detalhes; clique num dia para ver todas as obrigações daquele dia.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button variant="outline" size="sm" onClick={refetch}>
-                Tentar novamente
-              </Button>
-            </div>
-          ) : loading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          ) : (
-            <ObligationsCalendar
-              obligations={view.filtered}
-              viewMode={view.viewMode}
-              onViewModeChange={view.setViewMode}
-              anchorDate={view.anchorDate}
-              onAnchorChange={view.setAnchorDate}
-              selectedId={view.selectedId}
-              onSelect={handleSelect}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* Alternador de visualização */}
+      <div className="flex items-center gap-1">
+        {VIEW_TABS.map((t) => (
+          <Button
+            key={t.key}
+            size="sm"
+            variant={view.viewMode === t.key ? 'default' : 'outline'}
+            className={cn(
+              'h-8 text-xs',
+              view.viewMode === t.key ? 'bg-[#087F8C] hover:bg-[#087F8C]/90' : 'bg-white',
+            )}
+            onClick={() => view.setViewMode(t.key)}
+          >
+            {t.icon}
+            <span className="ml-1">{t.label}</span>
+          </Button>
+        ))}
+      </div>
+
+      {/* Visualização principal */}
+      {renderMainView()}
 
       {/* Quadros inferiores */}
-      <BoardCards view={view} loading={loading} onSelect={handleSelect} />
+      <BoardCards view={view} loading={loading} error={error} onRetry={refetch} />
 
       {/* Painel lateral de detalhes */}
       <ObligationDetailPanel

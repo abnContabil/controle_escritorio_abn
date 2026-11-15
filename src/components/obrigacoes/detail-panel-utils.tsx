@@ -1,4 +1,6 @@
 // Utilitários e subcomponentes de apresentação do painel de detalhes.
+// Fonte única para formatadores usados em toda a central (calendário,
+// quadros inferiores, kanban e painel).
 import { cn } from '@/lib/utils'
 import { DEPARTMENT_DOT_CLASSES, DEPARTMENT_LABELS, getDepartment } from './departments'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'

@@ -27,12 +27,8 @@ import { useToast } from '@/hooks/use-toast'
 import type { AbnObligationOperational } from '@/hooks/use-abn-obligations'
 import type { ResponsibleUser } from '@/hooks/use-responsible-users'
 import { DEPARTMENT_LABELS } from './departments'
-import {
-  DetailRow,
-  formatDateBR,
-  formatCompetencia,
-  getObligationDepartment,
-} from './detail-panel-utils'
+import { formatDateBR, formatCompetencia } from './detail-panel-utils'
+import { DetailRow, getObligationDepartment } from './detail-panel-utils'
 import { ObligationExecutionTab, type ChecklistRow } from './ObligationExecutionTab'
 
 type HistoryRow = {
