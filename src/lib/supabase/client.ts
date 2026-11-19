@@ -1,11 +1,11 @@
 // Credenciais fixas do projeto Supabase (fallback quando não há env de build).
 // NUNCA usar service_role ou outra chave secreta aqui — apenas chave pública (publishable/anon).
-// Alterado por pedido do usuário: projeto pqwedttfxgbkxwpzsuau.
+// Projeto correto (schema contabil_io), conforme confirmação do usuário.
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
-const FALLBACK_URL = 'https://pqwedttfxgbkxwpzsuau.supabase.co'
-const FALLBACK_PUBLISHABLE_KEY = 'sb_publishable_gGWC_KeIkzsfkaujnMfzQg_pWR8bGoO'
+const FALLBACK_URL = 'https://xfvppmuvugbpbipkyxas.supabase.co'
+const FALLBACK_PUBLISHABLE_KEY = 'sb_publishable_F4lySgjmOKJyGMGAOcrL2w_z2-sNJt8'
 
 const SUPABASE_URL =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || FALLBACK_URL
